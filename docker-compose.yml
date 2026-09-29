@@ -28,7 +28,7 @@ services:
       DIRECT_URL: postgresql://refunds:refunds@db:5432/refunds
       WEB_ORIGIN: http://localhost:${WEB_PORT:-3000}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-opus-5}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-opus-5-5}
       MOCK_LLM: ${MOCK_LLM:-false}
       JWT_SECRET: ${JWT_SECRET:-local-only-secret-change-me-before-any-deploy}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-refund-desk-admin}

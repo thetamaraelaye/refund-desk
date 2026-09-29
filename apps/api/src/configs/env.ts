@@ -10,6 +10,18 @@ const EnvSchema = z.object({
   WEB_ORIGIN: z.string().default('http://localhost:3000'),
   DOCS_USERNAME: z.string().optional(),
   DOCS_PASSWORD: z.string().optional(),
+  // Empty means no key: the deterministic mock model runs instead, and every demo scenario still works.
+  ANTHROPIC_API_KEY: z
+    .string()
+    .optional()
+    .transform((key) => key || undefined),
+  ANTHROPIC_MODEL: z.string().min(1).default('claude-opus-5-5'),
+  MOCK_LLM: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((flag) => flag === 'true'),
+  // Per model call; a timeout escalates the request to a person rather than retrying without end (D9).
+  LLM_TIMEOUT_MS: z.coerce.number().int().positive().default(20_000),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

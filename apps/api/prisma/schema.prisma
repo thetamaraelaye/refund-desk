@@ -1,0 +1,215 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+// DIRECT_URL bypasses the connection pooler for migrations; locally both point at the same database.
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum OrderStatus {
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum RefundSource {
+  AUTOMATED
+  AGENT
+  HISTORICAL
+}
+
+enum RequestStatus {
+  NEEDS_INFO
+  APPROVED
+  DENIED
+  ESCALATED
+}
+
+enum ReasonCategory {
+  DAMAGED
+  WRONG_ITEM
+  NOT_RECEIVED
+  CHANGED_MIND
+  OTHER
+  UNSPECIFIED
+}
+
+enum RequestFlag {
+  HUMAN_REQUESTED
+  MANIPULATION
+  EXTRACTION_FAILED
+  CROSS_ACCOUNT
+  CLAIM_MISMATCH
+  HIGH_VALUE
+  FAIR_USE
+  UNCONFIGURED_CURRENCY
+}
+
+enum MessageRole {
+  CUSTOMER
+  ASSISTANT
+  STAFF
+}
+
+enum AuditKind {
+  AUTOMATED
+  HANDOFF
+  STAFF_RESOLUTION
+}
+
+enum ReplySource {
+  MODEL
+  TEMPLATE
+}
+
+model Customer {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders         Order[]
+  refunds        Refund[]
+  refundRequests RefundRequest[]
+
+  @@map("customers")
+}
+
+model Order {
+  id          String      @id @default(cuid())
+  orderNumber String      @unique
+  customerId  String
+  status      OrderStatus
+  // ISO 4217; every amount on this order and its refunds is in this currency.
+  currency    String      @db.Char(3)
+  placedAt    DateTime
+  deliveredAt DateTime?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  customer       Customer        @relation(fields: [customerId], references: [id])
+  items          OrderItem[]
+  refundRequests RefundRequest[]
+
+  @@index([customerId])
+  @@map("orders")
+}
+
+model OrderItem {
+  id             String  @id @default(cuid())
+  orderId        String
+  sku            String
+  name           String
+  quantity       Int
+  unitPriceMinor Int
+  finalSale      Boolean @default(false)
+
+  order          Order           @relation(fields: [orderId], references: [id])
+  refund         Refund?
+  refundRequests RefundRequest[]
+
+  @@unique([orderId, sku])
+  @@map("order_items")
+}
+
+// Issued refunds. The unique item id is what guarantees one refund per item, even under races.
+model Refund {
+  id              String       @id @default(cuid())
+  orderItemId     String       @unique
+  customerId      String
+  refundRequestId String?      @unique
+  amountMinor     Int
+  currency        String       @db.Char(3)
+  source          RefundSource
+  issuedById      String?
+  issuedByName    String?
+  issuedAt        DateTime     @default(now())
+
+  orderItem     OrderItem      @relation(fields: [orderItemId], references: [id])
+  customer      Customer       @relation(fields: [customerId], references: [id])
+  refundRequest RefundRequest? @relation(fields: [refundRequestId], references: [id])
+
+  @@index([customerId, issuedAt])
+  @@map("refunds")
+}
+
+model RefundRequest {
+  id             String          @id @default(cuid())
+  reference      Int             @unique @default(autoincrement())
+  customerId     String
+  status         RequestStatus
+  orderId        String?
+  orderItemId    String?
+  amountMinor    Int?
+  currency       String?         @db.Char(3)
+  reasonCategory ReasonCategory?
+  flags          RequestFlag[]   @default([])
+  decisiveRule   String?
+  summary        String?
+  resolvedById   String?
+  resolvedByName String?
+  resolvedAt     DateTime?
+  resolutionNote String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  customer  Customer         @relation(fields: [customerId], references: [id])
+  order     Order?           @relation(fields: [orderId], references: [id])
+  orderItem OrderItem?       @relation(fields: [orderItemId], references: [id])
+  messages  RequestMessage[]
+  audits    DecisionAudit[]
+  refund    Refund?
+
+  @@index([status, createdAt])
+  @@index([customerId, createdAt])
+  @@map("refund_requests")
+}
+
+model RequestMessage {
+  id        String      @id @default(cuid())
+  requestId String
+  role      MessageRole
+  body      String
+  createdAt DateTime    @default(now())
+
+  request RefundRequest @relation(fields: [requestId], references: [id])
+
+  @@index([requestId, createdAt])
+  @@map("request_messages")
+}
+
+// Append-only: one row per decision, automated or human. Nothing updates or deletes these.
+model DecisionAudit {
+  id              String        @id @default(cuid())
+  requestId       String
+  kind            AuditKind
+  actorId         String?
+  actorName       String
+  inputText       String?
+  signals         Json?
+  extraction      Json?
+  extractionError String?
+  facts           Json?
+  ruleTrace       Json?
+  outcome         RequestStatus
+  decisiveRule    String?
+  reply           String?
+  replySource     ReplySource?
+  llmMode         String?
+  model           String?
+  latencyMs       Int?
+  usage           Json?
+  policyVersion   String
+  note            String?
+  createdAt       DateTime      @default(now())
+
+  request RefundRequest @relation(fields: [requestId], references: [id])
+
+  @@index([requestId, createdAt])
+  @@map("decision_audits")
+}

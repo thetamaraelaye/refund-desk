@@ -38,6 +38,9 @@ Then open **<http://localhost:3000>**.
 - **Reset the demo data** (clears requests, refunds made through the app, and audits; keeps
   the catalogue): `docker compose exec api node dist/database/seed.js --reset`. To wipe
   everything: `docker-compose down -v`.
+- **Fill the dashboard with example decisions:** `node apps/api/scripts/demo-history.mjs` sends
+  the demo scenarios through the running API as their customers. It skips the three that
+  approve refunds, so those stay available to try live.
 
 ## A five-minute tour
 

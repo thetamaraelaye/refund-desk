@@ -1,18 +1,9 @@
 import { DEMO_SCENARIOS, type DemoScenario } from '../../database/demo-scenarios';
-import {
-  SEED_CURRENCY,
-  SEED_CUSTOMERS,
-  seedLineMinor,
-  seedPayments,
-  type SeedOrder,
-} from '../../database/seed-data';
+import { seedPolicyInput } from '../../database/seed-facts';
 import { evaluateRefundPolicy } from './evaluate';
-import { FAIR_USE_WINDOW_DAYS } from './policy-config';
-import type { CustomerClaim, OrderFacts, PolicyInput, RequestSignals } from './types';
+import type { CustomerClaim, PolicyInput, RequestSignals } from './types';
 
 const NOW = new Date('2026-09-29T12:00:00Z');
-const DAY_MS = 24 * 60 * 60 * 1000;
-const daysAgo = (days: number) => new Date(NOW.getTime() - days * DAY_MS);
 
 type ScenarioReading = Pick<CustomerClaim, 'orderNumber' | 'reason'> &
   Partial<CustomerClaim> &
@@ -60,73 +51,22 @@ const READINGS: Record<string, ScenarioReading> = {
   },
 };
 
-const refunded = (seedOrder: SeedOrder) =>
-  seedOrder.items.filter((i) => i.refundedDaysAgo !== undefined);
-
-const at = (days: number | undefined) => (days === undefined ? null : daysAgo(days));
-
-function orderFacts(customerEmail: string, seedOrder: SeedOrder): OrderFacts {
-  const payments = seedPayments(seedOrder);
-  const refunds = payments.filter((p) => p.kind === 'REFUND');
-  const sum = (list: typeof payments) => list.reduce((total, p) => total + p.amountMinor, 0);
-  return {
-    id: seedOrder.orderNumber,
-    orderNumber: seedOrder.orderNumber,
-    customerId: customerEmail,
-    status: seedOrder.status,
-    currency: SEED_CURRENCY,
-    deliveredAt: at(seedOrder.deliveredDaysAgo),
-    cancelledAt: at(seedOrder.cancelledDaysAgo),
-    refundedTotalMinor: refunded(seedOrder).reduce((total, i) => total + seedLineMinor(i), 0),
-    payments: {
-      chargedMinor: sum(payments.filter((p) => p.kind === 'CHARGE')),
-      refundedMinor: sum(refunds),
-      lastRefundAt: at(refunds.length ? Math.min(...refunds.map((p) => p.daysAgo)) : undefined),
-    },
-    items: seedOrder.items.map((i) => ({
-      id: i.sku,
-      sku: i.sku,
-      name: i.name,
-      quantity: i.quantity ?? 1,
-      unitPriceMinor: i.unitPriceMinor,
-      finalSale: i.finalSale ?? false,
-      alreadyRefunded: i.refundedDaysAgo !== undefined,
-    })),
-  };
-}
-
-// The same facts the refund service will load from Postgres, built from the seed instead.
 function inputFor(scenario: DemoScenario): PolicyInput {
   const reading = READINGS[scenario.key];
-  const customer = SEED_CUSTOMERS.find((c) => c.email === scenario.customerEmail);
-  if (!customer) throw new Error(`No seed customer ${scenario.customerEmail}`);
-
-  const owner = SEED_CUSTOMERS.find((c) =>
-    c.orders.some((o) => o.orderNumber === reading.orderNumber),
-  );
-  const seedOrder = owner?.orders.find((o) => o.orderNumber === reading.orderNumber);
-
-  return {
-    now: NOW,
-    customerId: customer.email,
-    claim: {
-      orderNumber: reading.orderNumber,
-      itemSku: reading.itemSku ?? null,
-      itemMentioned: reading.itemMentioned ?? reading.itemSku !== undefined,
-      reason: reading.reason,
-      claimedAmountMinor: reading.claimedAmountMinor ?? null,
-      claimedCurrency: reading.claimedCurrency ?? null,
-    },
-    signals: {
-      manipulation: reading.manipulation ?? false,
-      extractionFailed: reading.extractionFailed ?? false,
-      humanRequested: reading.humanRequested ?? false,
-    },
-    order: owner && seedOrder ? orderFacts(owner.email, seedOrder) : null,
-    recentRefundCount: customer.orders
-      .flatMap(refunded)
-      .filter((i) => (i.refundedDaysAgo ?? Infinity) <= FAIR_USE_WINDOW_DAYS).length,
+  const claim = {
+    orderNumber: reading.orderNumber,
+    itemSku: reading.itemSku ?? null,
+    itemMentioned: reading.itemMentioned ?? reading.itemSku !== undefined,
+    reason: reading.reason,
+    claimedAmountMinor: reading.claimedAmountMinor ?? null,
+    claimedCurrency: reading.claimedCurrency ?? null,
   };
+  const signals = {
+    manipulation: reading.manipulation ?? false,
+    extractionFailed: reading.extractionFailed ?? false,
+    humanRequested: reading.humanRequested ?? false,
+  };
+  return seedPolicyInput(scenario.customerEmail, claim, signals, NOW);
 }
 
 describe('demo scenarios against the seeded records', () => {

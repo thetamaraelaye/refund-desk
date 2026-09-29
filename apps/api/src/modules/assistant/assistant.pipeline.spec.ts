@@ -13,7 +13,7 @@ import {
   seedOrderFacts,
   seedPolicyInput,
 } from '../../database/seed-facts';
-import { AssistantService } from './assistant.service';
+import { AssistantService, toClaim } from './assistant.service';
 import {
   LlmFailure,
   type Extraction,
@@ -107,6 +107,53 @@ describe('the mock model, the policy engine and the reply guard, end to end', ()
       "It's ORD-1014, the laptop stand arrived bent and dented.",
     ]);
     expect(second.decision.outcome).toBe('APPROVED');
+  });
+
+  it('finds the order from the item described when the customer gives no order number', async () => {
+    const { reading, decision } = await run(service, 'amara.okafor@example.com', [
+      'My pour-over set arrived with a cracked carafe. Can I get a refund?',
+    ]);
+
+    expect(reading.claim).toMatchObject({ orderNumber: 'ORD-1001', orderInferred: true });
+    expect(decision.outcome).toBe('APPROVED');
+    expect(decision.trace.find((r) => r.rule === 'order-identified')?.detail).toBe(
+      'Matched ORD-1001 from the item described; the customer gave no order number.',
+    );
+  });
+
+  it('asks for the order when the item described matches none of their orders', async () => {
+    const { decision } = await run(service, 'amara.okafor@example.com', [
+      'My TV arrived with a cracked screen.',
+    ]);
+
+    expect(decision.outcome).toBe('NEEDS_INFO');
+    expect(decision.missing).toContain('order');
+  });
+
+  it('never guesses between two orders that both match', () => {
+    const mugs = { sku: 'KIT-MUGS-04', name: 'Ceramic mug set (4)' };
+    const extraction = readMessages({
+      customerMessages: ['The ceramic mug set arrived chipped.'],
+      catalog: [
+        { orderNumber: 'ORD-2001', items: [mugs] },
+        { orderNumber: 'ORD-2002', items: [mugs] },
+      ],
+    });
+
+    expect(extraction.order_number).toBeNull();
+  });
+
+  it("drops an 'inferred' order that is not one of the customer's own", () => {
+    const claim = toClaim(
+      {
+        ...readMessages({ customerMessages: ['My TV is broken.'], catalog: [] }),
+        order_number: 'ORD-1004',
+      },
+      seedCatalog('amara.okafor@example.com'),
+      ['My TV is broken.'],
+    );
+
+    expect(claim.orderNumber).toBeNull();
   });
 
   it('tells the customer when and where an already-refunded item went', async () => {

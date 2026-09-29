@@ -76,7 +76,7 @@ export class AssistantService {
 
     const { customerMessages } = input;
     return {
-      claim: toClaim(extraction, input.catalog),
+      claim: toClaim(extraction, input.catalog, customerMessages),
       signals: {
         // Either the model or the deterministic check is enough.
         manipulation: extraction.manipulation_attempt || detectManipulation(customerMessages),
@@ -124,9 +124,19 @@ export class AssistantService {
 }
 
 // The model's fields, checked and normalised. Nothing here is trusted to be well-formed.
-export function toClaim(extraction: Extraction, catalog: CatalogOrder[]): CustomerClaim {
+export function toClaim(
+  extraction: Extraction,
+  catalog: CatalogOrder[],
+  customerMessages: string[] = [],
+): CustomerClaim {
   const digits = /^ORD[-\s]?(\d{4})$/i.exec(extraction.order_number?.trim() ?? '');
-  const orderNumber = digits ? `ORD-${digits[1]}` : null;
+  let orderNumber = digits ? `ORD-${digits[1]}` : null;
+
+  // An order the customer never typed was inferred from the item they described. Inference may only
+  // land on one of their own orders; anything else is dropped, so the customer is asked instead.
+  const typed = digits && new RegExp(`\\b(?:ORD[-\\s#]?)?${digits[1]}\\b`, 'i');
+  const orderInferred = orderNumber !== null && !customerMessages.some((m) => typed!.test(m));
+  if (orderInferred && !catalog.some((o) => o.orderNumber === orderNumber)) orderNumber = null;
 
   // A SKU must exist somewhere in the customer's own orders; an invented one counts as an item named
   // that isn't in the order, which escalates.
@@ -144,6 +154,7 @@ export function toClaim(extraction: Extraction, catalog: CatalogOrder[]): Custom
 
   return {
     orderNumber,
+    orderInferred: orderInferred && orderNumber !== null,
     itemSku,
     itemMentioned: itemSku !== null || rawSku !== null || extraction.item_named_not_in_order,
     reason: extraction.reason,

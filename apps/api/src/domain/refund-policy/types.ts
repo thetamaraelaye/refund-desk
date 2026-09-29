@@ -58,6 +58,9 @@ export interface OrderFacts {
 // What the customer's message says, as extracted. Claims are compared with records, never paid.
 export interface CustomerClaim {
   orderNumber: string | null;
+  // True when the customer described an item instead of typing the order number, and the order was
+  // matched from their own orders.
+  orderInferred?: boolean;
   // One of the named order's SKUs, when the message identifies an item.
   itemSku: string | null;
   // The message names an item, whether or not it matched one.

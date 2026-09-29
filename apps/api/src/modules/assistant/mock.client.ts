@@ -119,10 +119,21 @@ export function readMessages({ customerMessages, catalog }: ReadInput): Extracti
   const text = customerMessages.join('\n');
 
   const orderNumbers = [...text.matchAll(/\bORD[-\s]?(\d{4})\b/gi)].map((m) => `ORD-${m[1]}`);
-  const orderNumber = orderNumbers.at(-1) ?? null;
-  const order = catalog.find((o) => o.orderNumber === orderNumber);
+  let orderNumber = orderNumbers.at(-1) ?? null;
+  let order = catalog.find((o) => o.orderNumber === orderNumber);
+  let itemSku = order ? matchItem(text, order) : null;
 
-  const itemSku = order ? matchItem(text, order) : null;
+  // No order number given: if the item described matches exactly one of the customer's own orders,
+  // that is the order. Two or more candidates means asking, never guessing.
+  if (orderNumber === null) {
+    const candidates = catalog
+      .map((o) => ({ order: o, sku: matchItem(text, o) }))
+      .filter((candidate) => candidate.sku !== null);
+    if (candidates.length === 1) {
+      ({ order, sku: itemSku } = candidates[0]);
+      orderNumber = order.orderNumber;
+    }
+  }
   const reason = REASONS.find(([, pattern]) => pattern.test(text))?.[0] ?? 'UNSPECIFIED';
 
   const money = /([$€£₦])\s?(\d[\d,]*(?:\.\d{1,2})?)/.exec(text);

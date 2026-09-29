@@ -124,11 +124,24 @@ export const POLICY_RULES: readonly PolicyRule[] = [
   {
     id: 'order-identified',
     clause: '§5a',
-    title: 'Order number given',
-    evaluate: ({ input }) =>
-      input.claim.orderNumber === null
-        ? fail('NEEDS_INFO', 'The message has no order number.', { missing: 'order' })
-        : pass(`Names ${input.claim.orderNumber}.`),
+    title: 'Order identified',
+    evaluate: ({ input }) => {
+      const { orderNumber, orderInferred } = input.claim;
+      if (orderNumber === null) {
+        return fail(
+          'NEEDS_INFO',
+          'No order number, and no single order matches the item described.',
+          {
+            missing: 'order',
+          },
+        );
+      }
+      return pass(
+        orderInferred
+          ? `Matched ${orderNumber} from the item described; the customer gave no order number.`
+          : `Names ${orderNumber}.`,
+      );
+    },
   },
   {
     id: 'order-on-account',

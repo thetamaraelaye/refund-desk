@@ -22,6 +22,15 @@ const EnvSchema = z.object({
     .transform((flag) => flag === 'true'),
   // Per model call; a timeout escalates the request to a person rather than retrying without end (D9).
   LLM_TIMEOUT_MS: z.coerce.number().int().positive().default(20_000),
+  // Signs session cookies. Required: a deploy without one fails to boot instead of minting weak tokens.
+  JWT_SECRET: z.string().min(24, 'must be at least 24 characters'),
+  // The support dashboard's shared password (demo scope; a real deployment uses SSO).
+  ADMIN_PASSWORD: z.string().min(8, 'must be at least 8 characters'),
+  // Kill switch for money leaving without a person: false escalates every would-be approval.
+  AUTO_REFUNDS_ENABLED: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((flag) => flag === 'true'),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

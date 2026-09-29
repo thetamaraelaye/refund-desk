@@ -32,6 +32,7 @@ services:
       MOCK_LLM: ${MOCK_LLM:-false}
       JWT_SECRET: ${JWT_SECRET:-local-only-secret-change-me-before-any-deploy}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-refund-desk-admin}
+      AUTO_REFUNDS_ENABLED: ${AUTO_REFUNDS_ENABLED:-true}
     ports:
       - '${API_PORT:-4000}:4000'
     depends_on:

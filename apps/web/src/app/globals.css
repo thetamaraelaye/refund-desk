@@ -1,26 +1,96 @@
 @import 'tailwindcss';
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* Role tokens, defined once. Components use these names, never hex values.
+   Colour carries meaning only: ink for actions and text, the four tones for request status. */
+@theme {
+  --color-ink: #16202e;
+  --color-ink-soft: #334052;
+  --color-muted: #566173;
+  --color-paper: #f4f6f8;
+  --color-surface: #ffffff;
+  --color-sunken: #eceff3;
+  --color-line: #d9dee5;
+  --color-line-strong: #b4bcc8;
+  --color-focus: #2b4acb;
+
+  --color-approved: #1d6b45;
+  --color-approved-tint: #e6f4ec;
+  --color-denied: #a3261b;
+  --color-denied-tint: #fbeae8;
+  --color-escalated: #8a4b0f;
+  --color-escalated-tint: #fdf1e2;
+  --color-waiting: #1e4fa8;
+  --color-waiting-tint: #e8effb;
+
+  /* The decision receipt is the one object printed on paper. */
+  --color-receipt: #fffefa;
+
+  --font-sans: var(--font-public-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
+
+  /* Radius shrinks as interactivity grows. */
+  --radius-panel: 12px;
+  --radius-input: 8px;
+  --radius-button: 6px;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  background: var(--color-paper);
+  color: var(--color-ink);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-sans), system-ui, sans-serif;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* One visible focus style everywhere. */
+:where(a, button, input, textarea, select, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+/* Every interactive element eases between states; nothing snaps. */
+:where(a, button, input, textarea, select, summary, [role='tab'], [role='button']) {
+  transition-property: color, background-color, border-color, box-shadow, opacity, transform;
+  transition-duration: 160ms;
+  transition-timing-function: ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0ms !important;
+    animation-duration: 0ms !important;
+  }
+}
+
+/* The receipt's torn, perforated bottom edge. */
+.receipt-edge {
+  mask: radial-gradient(circle 6px at 8px 100%, #0000 97%, #000) 0 0 / 16px 100% repeat-x;
+  filter: drop-shadow(0 0 0.5px var(--color-line-strong));
+  padding-bottom: 22px;
+}
+
+@keyframes reading {
+  0%,
+  80%,
+  100% {
+    opacity: 0.25;
+  }
+  40% {
+    opacity: 1;
+  }
+}
+
+.reading-dot {
+  animation: reading 1.2s infinite ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reading-dot {
+    animation: none;
+    opacity: 0.6;
+  }
 }

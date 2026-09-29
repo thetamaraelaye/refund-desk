@@ -23,12 +23,16 @@ export default function AdminPage() {
   );
 }
 
-const TABS: { status?: RequestStatus; label: string }[] = [
-  { label: 'All' },
-  { status: 'ESCALATED', label: 'Escalated' },
-  { status: 'NEEDS_INFO', label: 'Needs info' },
-  { status: 'APPROVED', label: 'Approved' },
-  { status: 'DENIED', label: 'Denied' },
+type TabKey = 'attention' | 'all' | RequestStatus;
+
+// The console opens on the working queue: everything waiting on a person, longest waiting first.
+const TABS: { key: TabKey; label: string }[] = [
+  { key: 'attention', label: 'Needs attention' },
+  { key: 'all', label: 'All' },
+  { key: 'ESCALATED', label: 'Escalated' },
+  { key: 'NEEDS_INFO', label: 'Needs info' },
+  { key: 'APPROVED', label: 'Approved' },
+  { key: 'DENIED', label: 'Denied' },
 ];
 
 const STATUSES = new Set<string>(['ESCALATED', 'NEEDS_INFO', 'APPROVED', 'DENIED']);
@@ -73,7 +77,11 @@ const COLUMNS: Column<StaffListItem>[] = [
     render: (row) => (
       <div className="flex flex-col items-start gap-1">
         <StatusBadge status={row.status} />
-        <span className="text-xs text-muted">{formatRelative(row.updatedAt)}</span>
+        <span className="text-xs text-muted">
+          {row.status === 'ESCALATED' || row.status === 'NEEDS_INFO'
+            ? `Waiting since ${formatRelative(row.createdAt)}`
+            : formatRelative(row.updatedAt)}
+        </span>
       </div>
     ),
   },
@@ -86,11 +94,16 @@ function Dashboard() {
   // The URL is the state: filter, page and open request survive a reload and can be shared.
   const rawStatus = params.get('status');
   const status = rawStatus && STATUSES.has(rawStatus) ? (rawStatus as RequestStatus) : undefined;
+  const tab: TabKey = status ?? (params.get('view') === 'all' ? 'all' : 'attention');
   const page = Math.max(1, Number(params.get('page')) || 1);
   const selectedId = params.get('request');
 
   const session = useSession();
-  const list = useStaffRequests({ status, page });
+  const list = useStaffRequests({
+    status,
+    view: tab === 'attention' ? 'attention' : undefined,
+    page,
+  });
 
   const navigate = (changes: Record<string, string | null>) => {
     const next = new URLSearchParams(params);
@@ -110,31 +123,41 @@ function Dashboard() {
   return (
     <div className="flex min-h-dvh flex-col">
       <AppHeader
-        area="Support dashboard"
+        brand="console"
         person={session.data?.staff?.name}
-        role="staff"
         aside={
           <Link
             href="/"
             className="hidden rounded-button px-3 py-1.5 text-[13px] text-ink-soft hover:bg-sunken sm:inline"
           >
-            Try the customer chat
+            Customer help centre
           </Link>
         }
       />
 
       <nav aria-label="Filter by outcome" className="border-b border-line bg-surface">
         <ul className="mx-auto flex max-w-[1440px] gap-1 overflow-x-auto px-4 sm:px-6">
-          {TABS.map((tab) => {
-            const count = tab.status ? meta?.counts[tab.status] : total;
-            const active = tab.status === status;
+          {TABS.map(({ key, label }) => {
+            const count = !meta
+              ? undefined
+              : key === 'all'
+                ? total
+                : key === 'attention'
+                  ? meta.counts.ESCALATED + meta.counts.NEEDS_INFO
+                  : meta.counts[key];
+            const active = key === tab;
             return (
-              <li key={tab.label}>
+              <li key={key}>
                 <button
                   type="button"
                   aria-current={active ? 'page' : undefined}
                   onClick={() =>
-                    navigate({ status: tab.status ?? null, page: null, request: null })
+                    navigate({
+                      status: key === 'all' || key === 'attention' ? null : key,
+                      view: key === 'all' ? 'all' : null,
+                      page: null,
+                      request: null,
+                    })
                   }
                   className={cn(
                     'flex h-11 items-center gap-2 border-b-2 px-3 text-[13px] font-medium whitespace-nowrap',
@@ -143,7 +166,7 @@ function Dashboard() {
                       : 'border-transparent text-muted hover:border-line-strong hover:text-ink',
                   )}
                 >
-                  {tab.label}
+                  {label}
                   {count !== undefined && count !== null && (
                     <span className="rounded-full bg-sunken px-1.5 text-xs tabular-nums text-ink-soft">
                       {count}
@@ -168,7 +191,11 @@ function Dashboard() {
           )}
         >
           <DataTable
-            caption="Refund requests, newest activity first"
+            caption={
+              tab === 'attention'
+                ? 'Requests waiting on a person, longest waiting first'
+                : 'Refund requests, newest activity first'
+            }
             columns={COLUMNS}
             rows={list.data?.items}
             getRowId={(row) => row.id}
@@ -177,12 +204,20 @@ function Dashboard() {
             isLoading={list.isPending}
             error={list.error}
             onRetry={() => void list.refetch()}
-            empty={{
-              title: status ? 'Nothing here' : 'No requests yet',
-              message: status
-                ? 'No requests have this outcome yet.'
-                : 'Requests appear here as soon as a customer writes in. Try the customer chat to send one.',
-            }}
+            empty={
+              tab === 'attention'
+                ? {
+                    title: 'All caught up',
+                    message: 'No request is waiting on a person right now.',
+                  }
+                : status
+                  ? { title: 'Nothing here', message: 'No requests have this outcome yet.' }
+                  : {
+                      title: 'No requests yet',
+                      message:
+                        'Requests appear here as soon as a customer writes in from the help centre.',
+                    }
+            }
           />
           {meta && meta.total > 0 && (
             <div className="flex items-center gap-2 border-t border-line px-4 py-3 text-[13px] text-muted">

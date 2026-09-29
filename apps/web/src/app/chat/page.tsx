@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { AppHeader } from '@/components/app-header';
+import { DemoDrawer } from '@/components/demo-drawer';
 import { Button, Spinner } from '@/components/ui/button';
 import { cn } from '@/components/ui/cn';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
@@ -90,9 +91,26 @@ function Chat() {
     router.replace('/chat', { scroll: false });
   };
 
+  // Starting from the item, as real help centres do: the message opens already naming the order and
+  // item, so the customer only has to say what went wrong.
+  const getHelp = (orderNumber: string, itemName: string) => {
+    const opener = `I need help with the ${itemName} from ${orderNumber}. `;
+    if (!open) {
+      send.reset();
+      router.replace('/chat', { scroll: false });
+      setEdited(opener);
+    } else {
+      setEdited((text) => {
+        const base = (text ?? draft).trimEnd();
+        return base ? `${base} ${opener}` : opener;
+      });
+    }
+    requestAnimationFrame(() => document.getElementById('message')?.focus());
+  };
+
   return (
     <div className="flex min-h-dvh flex-col">
-      <AppHeader area="Help with an order" person={session.data?.customer?.name} role="customer" />
+      <AppHeader brand="store" person={session.data?.customer?.name} />
       <main className="mx-auto grid w-full max-w-[1200px] flex-1 gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         <section
           aria-labelledby="chat-heading"
@@ -168,7 +186,7 @@ function Chat() {
                   placeholder={
                     request
                       ? 'Reply to the assistant…'
-                      : 'Tell us what went wrong, and include your order number (it starts with ORD-).'
+                      : 'Tell us what went wrong, for example "my pour-over set arrived cracked".'
                   }
                   aria-describedby="message-help"
                   className="w-full resize-none rounded-input border border-line bg-surface px-3 py-2.5 text-[15px] leading-relaxed text-ink placeholder:text-muted hover:border-line-strong"
@@ -215,20 +233,11 @@ function Chat() {
         </section>
 
         <aside className="flex flex-col gap-6" aria-label="Your orders and requests">
-          <OrdersPanel
-            onUseOrder={(orderNumber) =>
-              setEdited((text) => {
-                const base = text ?? draft;
-                return base.includes(orderNumber)
-                  ? base
-                  : `${base}${base ? ' ' : ''}${orderNumber}`;
-              })
-            }
-            canUse={open}
-          />
+          <OrdersPanel onGetHelp={getHelp} />
           <PastRequests activeId={requestId} />
         </aside>
       </main>
+      <DemoDrawer />
     </div>
   );
 }
@@ -267,8 +276,9 @@ function Conversation({
         <div className="max-w-md py-6">
           <p className="text-[15px] font-medium text-ink">How can we help?</p>
           <p className="mt-1 text-sm leading-relaxed text-muted">
-            Tell us what went wrong with an order, for example a damaged or wrong item. Your orders
-            are listed alongside, so you can add the order number with one click.
+            Choose &ldquo;Get help with this item&rdquo; next to the item in your orders, or just
+            tell us what went wrong. If it&rsquo;s clear which order you mean, you don&rsquo;t need
+            the order number.
           </p>
         </div>
       )}
@@ -385,11 +395,9 @@ const ORDER_STATUS: Record<CustomerOrder['status'], string> = {
 };
 
 function OrdersPanel({
-  onUseOrder,
-  canUse,
+  onGetHelp,
 }: {
-  onUseOrder: (orderNumber: string) => void;
-  canUse: boolean;
+  onGetHelp: (orderNumber: string, itemName: string) => void;
 }) {
   const orders = useMyOrders();
   return (
@@ -421,24 +429,13 @@ function OrdersPanel({
                 : `${ORDER_STATUS[order.status]}, ordered ${formatDay(order.placedAt)}`;
           return (
             <li key={order.orderNumber} className="px-4 py-3">
-              <div className="flex items-center gap-2">
-                <p className="text-sm font-semibold text-ink">{order.orderNumber}</p>
-                <button
-                  type="button"
-                  onClick={() => onUseOrder(order.orderNumber)}
-                  disabled={!canUse}
-                  className="ml-auto rounded-button px-2 py-1 text-xs font-medium text-focus hover:bg-sunken disabled:text-muted"
-                  aria-label={`Add ${order.orderNumber} to your message`}
-                >
-                  Add to message
-                </button>
-              </div>
+              <p className="text-sm font-semibold text-ink">{order.orderNumber}</p>
               <p className="text-xs text-muted">{when}</p>
-              <ul className="mt-2 flex flex-col gap-1">
+              <ul className="mt-2 flex flex-col gap-2">
                 {order.items.map((item) => (
                   <li
                     key={item.sku}
-                    className="flex items-baseline gap-2 text-[13px] text-ink-soft"
+                    className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-[13px] text-ink-soft"
                   >
                     <span className="min-w-0 flex-1">
                       {item.name}
@@ -452,6 +449,14 @@ function OrdersPanel({
                     <span className="tabular-nums">
                       {formatMoney(item.unitPriceMinor * item.quantity, order.currency)}
                     </span>
+                    <button
+                      type="button"
+                      onClick={() => onGetHelp(order.orderNumber, item.name)}
+                      aria-label={`Get help with the ${item.name} from ${order.orderNumber}`}
+                      className="w-full rounded-button border border-line px-2 py-1 text-left text-xs font-medium text-ink hover:border-line-strong hover:bg-sunken"
+                    >
+                      Get help with this item
+                    </button>
                   </li>
                 ))}
               </ul>

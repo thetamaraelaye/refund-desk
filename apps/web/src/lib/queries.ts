@@ -13,6 +13,13 @@ import type {
   StaffRequestDetail,
 } from './types';
 
+// The staff queue: one status, or the "needs attention" view (escalated and waiting, oldest first).
+export interface StaffListFilters {
+  status?: RequestStatus;
+  view?: 'attention';
+  page: number;
+}
+
 // Keys are [resource, filters]; mutations invalidate the resources they change.
 export const keys = {
   session: ['session'] as const,
@@ -20,8 +27,7 @@ export const keys = {
   myOrders: ['my-orders'] as const,
   myRequests: ['my-requests'] as const,
   request: (id: string) => ['request', id] as const,
-  staffRequests: (filters: { status?: RequestStatus; page: number }) =>
-    ['staff-requests', filters] as const,
+  staffRequests: (filters: StaffListFilters) => ['staff-requests', filters] as const,
   staffRequest: (id: string) => ['staff-request', id] as const,
 };
 
@@ -137,13 +143,13 @@ export function useHandoff() {
 }
 
 // The dashboard refreshes itself, so a request sent from the chat appears without reloading.
-export const useStaffRequests = (filters: { status?: RequestStatus; page: number }) =>
+export const useStaffRequests = (filters: StaffListFilters) =>
   useQuery({
     queryKey: keys.staffRequests(filters),
     queryFn: () =>
       request<Paged<StaffListItem>>({
         url: '/admin/requests',
-        params: { status: filters.status, page: filters.page, limit: 20 },
+        params: { status: filters.status, view: filters.view, page: filters.page, limit: 20 },
       }),
     refetchInterval: 5_000,
     placeholderData: (previous) => previous,

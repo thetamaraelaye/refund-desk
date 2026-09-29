@@ -1,0 +1,53 @@
+# One command, no setup: `docker-compose up --build`, then open http://localhost:3000.
+# Every variable has a working default; copy .env.example to .env only to add an API key or change ports.
+name: refund-desk
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: refunds
+      POSTGRES_PASSWORD: refunds
+      POSTGRES_DB: refunds
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    ports:
+      - '${DB_PORT:-5433}:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U refunds -d refunds']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build: ./apps/api
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DATABASE_URL: postgresql://refunds:refunds@db:5432/refunds
+      DIRECT_URL: postgresql://refunds:refunds@db:5432/refunds
+      WEB_ORIGIN: http://localhost:${WEB_PORT:-3000}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-opus-5}
+      MOCK_LLM: ${MOCK_LLM:-false}
+      JWT_SECRET: ${JWT_SECRET:-local-only-secret-change-me-before-any-deploy}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-refund-desk-admin}
+    ports:
+      - '${API_PORT:-4000}:4000'
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ./apps/web
+      args:
+        API_ORIGIN: http://api:4000
+    ports:
+      - '${WEB_PORT:-3000}:3000'
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  db-data:

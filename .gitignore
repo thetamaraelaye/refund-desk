@@ -1,0 +1,16 @@
+# dependencies and build output
+node_modules/
+dist/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+
+# environment: only the .env.example templates are committed
+.env
+.env.*
+!.env.example
+
+# logs and OS noise
+*.log
+.DS_Store

@@ -256,8 +256,17 @@ One command runs every layer against a freshly started stack:
 | **API end-to-end** (`node apps/api/scripts/e2e.mjs`) | Drives the real API over HTTP: all 20 scenarios, sessions and ownership, closed requests, a two-message conversation, the handoff, a wrong staff password, and a specialist approving the $650 TV, with a 409 on a second ruling |
 | **Browser tests** (`cd e2e && npx playwright test`) | Real Chromium at desktop and phone sizes: the brief's six cases through the chat, the neutral reply to a prompt injection, "Talk to a person" before a first message, a two-message conversation to an approval, the orders panel, redirects when signed out, a specialist approving through the confirmation dialog (Escape cancels) with the customer's chat updating live, rows opened from the keyboard, and axe accessibility checks (WCAG 2.1 AA) on every page |
 
-The automated tests use the mock model. The Claude client runs behind the same interface, and
-its failure handling is tested with a scripted client.
+`test-everything.sh` pins the mock model, because the browser tests check exact reply wording.
+The live model is checked separately with the API end-to-end script, which checks outcomes, not
+wording. **Against live Claude (`claude-opus-5-5`, 29 Sep 2026):**
+- all 20 scenarios reached their expected outcome, and every other check passed
+- all 23 replies were written by Claude and passed the reply guard, with no template fallbacks
+- each message took 8 s on average (14 s at most) for its two model calls
+- each message cost about 1.4 cents
+
+The same run also showed the failure path working: during an Anthropic outage earlier that day,
+every request escalated to a person with a template reply. Nothing was approved without the
+model's reading.
 
 The staff sign-in limit (5 attempts a minute per IP) counts test sign-ins too. A full run uses 4
 of them, so wait a minute before running it again.

@@ -11,6 +11,10 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+# The browser tests check exact reply wording, so the run pins the deterministic mock model even when an
+# API key is set. The live model is checked separately: node apps/api/scripts/e2e.mjs checks outcomes only.
+export MOCK_LLM=true
+
 API_URL="http://localhost:${API_PORT:-4000}"
 step() { printf '\n\033[1m%s\033[0m\n' "$1"; }
 
@@ -33,4 +37,5 @@ npm ci --no-audit --no-fund --loglevel=error
 if [ -z "${PW_CHANNEL:-}" ]; then npx playwright install chromium; fi
 npx playwright test
 
-step "All test layers passed. The stack is still running at http://localhost:${WEB_PORT:-3000}"
+step "All test layers passed. The stack is still running at http://localhost:${WEB_PORT:-3000} on the mock model"
+echo "To switch back to the model in your .env: MOCK_LLM=false docker compose up -d api"

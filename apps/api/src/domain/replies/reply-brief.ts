@@ -35,7 +35,7 @@ const MISSING_PHRASES: Record<MissingDetail, string> = {
   reason: 'what went wrong with it',
 };
 
-const SPECIALIST = 'A member of our support team will review it and reply within one business day.';
+const SPECIALIST = "They'll reply here within one business day.";
 
 const dateFormatter = new Intl.DateTimeFormat('en-GB', {
   day: 'numeric',
@@ -81,7 +81,7 @@ export function buildReplyBrief(decision: PolicyDecision, facts: ReplyFacts): Re
       } else {
         explanation = `${order} was cancelled, but our records show part of the charge hasn't been refunded yet.`;
         nextStep =
-          'A member of our support team will sort out the refund and reply within one business day.';
+          'A member of our support team will sort out the refund and reply here within one business day.';
       }
       break;
     case 'refund-window':
@@ -128,7 +128,7 @@ export function buildReplyBrief(decision: PolicyDecision, facts: ReplyFacts): Re
       break;
     case 'review-threshold':
       explanation = thresholdText
-        ? `Refunds over ${thresholdText} are reviewed by a member of our support team.`
+        ? `Refunds over ${thresholdText} are always checked by a member of our support team.`
         : "I've passed your request to our support team.";
       break;
     default:

@@ -66,6 +66,19 @@ enum ReplySource {
   TEMPLATE
 }
 
+enum PaymentKind {
+  CHARGE
+  REFUND
+}
+
+enum ShipmentStatus {
+  LABEL_CREATED
+  IN_TRANSIT
+  OUT_FOR_DELIVERY
+  DELIVERED
+  EXCEPTION
+}
+
 model Customer {
   id        String   @id @default(cuid())
   name      String
@@ -76,6 +89,7 @@ model Customer {
   orders         Order[]
   refunds        Refund[]
   refundRequests RefundRequest[]
+  payments       Payment[]
 
   @@map("customers")
 }
@@ -88,16 +102,61 @@ model Order {
   // ISO 4217; every amount on this order and its refunds is in this currency.
   currency    String      @db.Char(3)
   placedAt    DateTime
+  // Mirrors the carrier's DELIVERED event; the refund window counts from here.
   deliveredAt DateTime?
+  cancelledAt DateTime?
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 
   customer       Customer        @relation(fields: [customerId], references: [id])
   items          OrderItem[]
   refundRequests RefundRequest[]
+  payments       Payment[]
+  shipmentEvents ShipmentEvent[]
 
   @@index([customerId])
   @@map("orders")
+}
+
+// Money movements, append-only: the charge at checkout and every refund, including one on cancellation.
+// A cancelled order is settled from these rows: refunded in full means nothing is owed.
+model Payment {
+  id          String      @id @default(cuid())
+  orderId     String
+  customerId  String
+  kind        PaymentKind
+  amountMinor Int
+  currency    String      @db.Char(3)
+  // Card brand and last four digits, as the customer sees them.
+  method      String
+  // The payment processor's id for this movement.
+  reference   String      @unique
+  // Set when the movement pays out an item refund; a cancellation refund covers the whole order.
+  refundId    String?     @unique
+  occurredAt  DateTime
+
+  order    Order    @relation(fields: [orderId], references: [id])
+  customer Customer @relation(fields: [customerId], references: [id])
+  refund   Refund?  @relation(fields: [refundId], references: [id])
+
+  @@index([orderId, occurredAt])
+  @@index([customerId, occurredAt])
+  @@map("payments")
+}
+
+// Carrier tracking, shown to specialists; for example, a delivery scan behind an "it never arrived" claim.
+model ShipmentEvent {
+  id         String         @id @default(cuid())
+  orderId    String
+  status     ShipmentStatus
+  carrier    String
+  detail     String
+  occurredAt DateTime
+
+  order Order @relation(fields: [orderId], references: [id])
+
+  @@index([orderId, occurredAt])
+  @@map("shipment_events")
 }
 
 model OrderItem {
@@ -133,6 +192,7 @@ model Refund {
   orderItem     OrderItem      @relation(fields: [orderItemId], references: [id])
   customer      Customer       @relation(fields: [customerId], references: [id])
   refundRequest RefundRequest? @relation(fields: [refundRequestId], references: [id])
+  payment       Payment?
 
   @@index([customerId, issuedAt])
   @@map("refunds")

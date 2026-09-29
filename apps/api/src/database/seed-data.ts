@@ -13,9 +13,12 @@ export interface SeedItem {
 
 export interface SeedOrder {
   orderNumber: string;
-  status: 'PROCESSING' | 'SHIPPED' | 'DELIVERED';
+  status: 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
   placedDaysAgo: number;
   deliveredDaysAgo?: number;
+  cancelledDaysAgo?: number;
+  // Present when the charge was refunded in full on cancellation.
+  cancellationRefundDaysAgo?: number;
   items: SeedItem[];
 }
 
@@ -294,6 +297,14 @@ export const SEED_CUSTOMERS: readonly SeedCustomer[] = [
         deliveredDaysAgo: 60,
         items: [{ sku: 'OFF-HUB-07', name: 'USB-C hub, 7-port', unitPriceMinor: 4900 }],
       },
+      {
+        orderNumber: 'ORD-1016',
+        status: 'CANCELLED',
+        placedDaysAgo: 6,
+        cancelledDaysAgo: 5,
+        cancellationRefundDaysAgo: 5,
+        items: [{ sku: 'OFF-CHAIR-01', name: 'Ergonomic office chair', unitPriceMinor: 24900 }],
+      },
     ],
   },
   {
@@ -315,6 +326,117 @@ export const SEED_CUSTOMERS: readonly SeedCustomer[] = [
         deliveredDaysAgo: 35,
         items: [{ sku: 'HOM-CNDL-03', name: 'Scented candle trio', unitPriceMinor: 2800 }],
       },
+      {
+        orderNumber: 'ORD-1017',
+        status: 'CANCELLED',
+        placedDaysAgo: 3,
+        cancelledDaysAgo: 2,
+        items: [{ sku: 'APP-RAIN-JK', name: 'Packable rain jacket', unitPriceMinor: 8900 }],
+      },
     ],
   },
 ];
+
+// Seeded payment references share this prefix, so a reset can remove only what the app wrote.
+export const SEED_REFERENCE_PREFIX = 'seed_';
+
+const SEED_CARDS = [
+  'Visa •••• 4242',
+  'Mastercard •••• 4444',
+  'Visa •••• 1881',
+  'Amex •••• 0005',
+  'Mastercard •••• 5100',
+] as const;
+
+export const seedCardFor = (customerIndex: number) => SEED_CARDS[customerIndex % SEED_CARDS.length];
+
+export const seedLineMinor = (item: SeedItem) => item.unitPriceMinor * (item.quantity ?? 1);
+
+export const seedOrderTotalMinor = (order: SeedOrder) =>
+  order.items.reduce((sum, item) => sum + seedLineMinor(item), 0);
+
+export interface SeedPayment {
+  kind: 'CHARGE' | 'REFUND';
+  reference: string;
+  amountMinor: number;
+  daysAgo: number;
+  // The item a refund pays out; absent for the charge and for a cancellation refund.
+  sku?: string;
+}
+
+// Every seeded order was charged in full at checkout; refunds follow item refunds and cancellations.
+export function seedPayments(order: SeedOrder): SeedPayment[] {
+  const payments: SeedPayment[] = [
+    {
+      kind: 'CHARGE',
+      reference: `${SEED_REFERENCE_PREFIX}ch_${order.orderNumber}`,
+      amountMinor: seedOrderTotalMinor(order),
+      daysAgo: order.placedDaysAgo,
+    },
+  ];
+  for (const item of order.items) {
+    if (item.refundedDaysAgo === undefined) continue;
+    payments.push({
+      kind: 'REFUND',
+      reference: `${SEED_REFERENCE_PREFIX}re_${order.orderNumber}_${item.sku}`,
+      amountMinor: seedLineMinor(item),
+      daysAgo: item.refundedDaysAgo,
+      sku: item.sku,
+    });
+  }
+  if (order.cancellationRefundDaysAgo !== undefined) {
+    payments.push({
+      kind: 'REFUND',
+      reference: `${SEED_REFERENCE_PREFIX}re_${order.orderNumber}`,
+      amountMinor: seedOrderTotalMinor(order),
+      daysAgo: order.cancellationRefundDaysAgo,
+    });
+  }
+  return payments;
+}
+
+export interface SeedShipmentEvent {
+  status: 'LABEL_CREATED' | 'IN_TRANSIT' | 'OUT_FOR_DELIVERY' | 'DELIVERED';
+  carrier: string;
+  detail: string;
+  daysAgo: number;
+}
+
+const CARRIERS = ['UPS', 'FedEx', 'DHL'] as const;
+
+// A plain tracking history for every order that left the warehouse; the DELIVERED scan is deliveredAt.
+export function seedShipmentEvents(order: SeedOrder): SeedShipmentEvent[] {
+  if (order.status !== 'SHIPPED' && order.status !== 'DELIVERED') return [];
+  const carrier = CARRIERS[Number(order.orderNumber.replace(/\D/g, '')) % CARRIERS.length];
+  const events: SeedShipmentEvent[] = [
+    {
+      status: 'LABEL_CREATED',
+      carrier,
+      detail: 'Label created, awaiting pickup',
+      daysAgo: order.placedDaysAgo - 0.25,
+    },
+    {
+      status: 'IN_TRANSIT',
+      carrier,
+      detail: 'Departed carrier facility',
+      daysAgo: order.placedDaysAgo - 1,
+    },
+  ];
+  if (order.deliveredDaysAgo !== undefined) {
+    events.push(
+      {
+        status: 'OUT_FOR_DELIVERY',
+        carrier,
+        detail: 'Out for delivery',
+        daysAgo: order.deliveredDaysAgo + 0.25,
+      },
+      {
+        status: 'DELIVERED',
+        carrier,
+        detail: 'Delivered, left at front door',
+        daysAgo: order.deliveredDaysAgo,
+      },
+    );
+  }
+  return events;
+}

@@ -14,6 +14,33 @@ export interface DemoCustomer {
 export class CustomersService {
   constructor(private readonly prisma: PrismaConfig) {}
 
+  // What a customer sees of their own orders: enough to name the order and item in a request.
+  listOrders(customerId: string) {
+    return this.prisma.order.findMany({
+      where: { customerId },
+      select: {
+        orderNumber: true,
+        status: true,
+        currency: true,
+        placedAt: true,
+        deliveredAt: true,
+        cancelledAt: true,
+        items: {
+          select: {
+            sku: true,
+            name: true,
+            quantity: true,
+            unitPriceMinor: true,
+            finalSale: true,
+            refund: { select: { issuedAt: true } },
+          },
+          orderBy: { sku: 'asc' },
+        },
+      },
+      orderBy: { placedAt: 'desc' },
+    });
+  }
+
   // Customers behind the brief's six cases come first, in scenario order, then everyone else.
   async listDemoCustomers(): Promise<DemoCustomer[]> {
     const customers = await this.prisma.customer.findMany({

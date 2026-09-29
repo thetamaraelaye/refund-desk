@@ -10,7 +10,7 @@ import { CustomerSessionDto, StaffSessionDto } from './dto/auth.dto';
 // Five password attempts per minute per client IP. The demo customer picker has no secret to guess,
 // so it only gets a looser limit that still stops a script hammering it.
 const STAFF_SIGN_IN_LIMIT = { default: { limit: 5, ttl: 60_000 } };
-const CUSTOMER_SIGN_IN_LIMIT = { default: { limit: 30, ttl: 60_000 } };
+const CUSTOMER_SIGN_IN_LIMIT = { default: { limit: 60, ttl: 60_000 } };
 
 @ApiTags('Auth')
 @Public()

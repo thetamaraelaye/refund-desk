@@ -161,6 +161,8 @@ apps/
   web/                         Next.js 16, React 19, Tailwind 4, TanStack Query, Headless UI
     src/app/                   / sign-in, /chat customer chat, /admin support dashboard
     src/components/            decision receipt, request detail, UI kit
+e2e/                           Playwright browser tests: desktop, phone, accessibility
+scripts/test-everything.sh     every test layer against a freshly started stack
 docs/refund-policy.md          the policy every decision cites
 ```
 
@@ -241,36 +243,24 @@ browser.
 
 ## Testing
 
-```bash
-cd apps/api && npm ci && npm test          # 131 unit tests, no database needed
+One command runs every layer against a freshly started stack:
 
-docker compose exec api node dist/database/seed.js --reset
-node apps/api/scripts/e2e.mjs              # against the running stack (Node 22+)
+```bash
+./scripts/test-everything.sh        # Docker + Node 22; PW_CHANNEL=chrome uses your installed Chrome
 ```
 
-- **Policy engine:**
-  - every clause at its exact boundary: $500.00 against $500.01, day 30 to the millisecond,
-    and a claimed amount $1.00 off against $1.01
-  - precedence between the rules
-  - that a claim on another customer's order reveals nothing about it
-- **Demo scenarios:** all 20 run twice:
-  - against hand-written readings of each message
-  - through the mock model, the real engine and the reply guard
-- **Failure cases:** a model timeout, an injection the model missed, and drafts that claim the
-  wrong outcome, invent an amount or reveal the checks.
-- **`e2e.mjs`:** drives the real API over HTTP:
-  - all 20 scenarios
-  - sessions and ownership
-  - closed requests
-  - a two-message conversation
-  - the handoff
-  - a wrong staff password
-  - a specialist approving the $650 TV, with a 409 on a second ruling
-- **Web app:** typechecked on every build, including the Docker build. Lint runs with
-  `npm run lint` in `apps/web`.
+| Layer | What it covers |
+|---|---|
+| **API unit tests** (`cd apps/api && npm test`, 131 tests, no database) | The policy engine at every boundary: $500.00 against $500.01, day 30 to the millisecond, a claimed amount $1.00 off against $1.01. Also rule precedence, and that a claim on another customer's order reveals nothing about it. All 20 demo scenarios run twice: from hand-written readings, and through the mock model, the real engine and the reply guard. Failure cases: a model timeout, an injection the model missed, drafts that claim the wrong outcome, invent an amount or reveal the checks |
+| **Web typecheck and lint** | Strict TypeScript, and `react/no-danger` as an error |
+| **API end-to-end** (`node apps/api/scripts/e2e.mjs`) | Drives the real API over HTTP: all 20 scenarios, sessions and ownership, closed requests, a two-message conversation, the handoff, a wrong staff password, and a specialist approving the $650 TV, with a 409 on a second ruling |
+| **Browser tests** (`cd e2e && npx playwright test`) | Real Chromium at desktop and phone sizes: the brief's six cases through the chat, the neutral reply to a prompt injection, "Talk to a person" before a first message, a two-message conversation to an approval, the orders panel, redirects when signed out, a specialist approving through the confirmation dialog (Escape cancels) with the customer's chat updating live, rows opened from the keyboard, and axe accessibility checks (WCAG 2.1 AA) on every page |
 
 The automated tests use the mock model. The Claude client runs behind the same interface, and
 its failure handling is tested with a scripted client.
+
+The staff sign-in limit (5 attempts a minute per IP) counts test sign-ins too. A full run uses 4
+of them, so wait a minute before running it again.
 
 ## Assumptions and trade-offs
 

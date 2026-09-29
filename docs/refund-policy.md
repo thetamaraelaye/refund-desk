@@ -60,16 +60,21 @@ A specialist reviews the request when any of these apply:
 - **(d) We can't read the request reliably**, for example because of a
   system error.
 
-## §6 One refund per item
+## §6 Refunds already made
 
 Each item can be refunded once. A second request for an item that has already
 been refunded is declined.
 
+A cancelled order is refunded in full when it is cancelled. If our payment
+records show that refund, there is nothing more to refund: we'll tell you when
+it was made and where it went. If they show we still hold money for a
+cancelled order, a specialist refunds it.
+
 ## §7 How decisions are made
 
-- Every request is checked against the rules above, using our order records.
-- Anything these checks can't settle, such as a request about a cancelled
-  order, goes to a specialist.
+- Every request is checked against the rules above, using our order and
+  payment records.
+- Anything these checks can't settle goes to a specialist.
 - Our AI assistant reads your message and writes the reply. **It does not make
   the decision and cannot change it.**
 - You can ask for a person at any time, and a specialist will take over.

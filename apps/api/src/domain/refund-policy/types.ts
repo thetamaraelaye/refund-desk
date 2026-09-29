@@ -32,6 +32,14 @@ export interface ItemFacts {
   alreadyRefunded: boolean;
 }
 
+// Totals of the order's payment ledger: money actually taken and actually returned.
+export interface PaymentFacts {
+  chargedMinor: number;
+  // Every refund payment, item refunds and cancellation refunds alike.
+  refundedMinor: number;
+  lastRefundAt: Date | null;
+}
+
 export interface OrderFacts {
   id: string;
   orderNumber: string;
@@ -40,8 +48,10 @@ export interface OrderFacts {
   currency: string;
   // The carrier's delivery date; null until delivered.
   deliveredAt: Date | null;
-  // Everything already refunded on this order, from the refunds table.
+  cancelledAt: Date | null;
+  // Item refunds already issued on this order, from the refunds table (§3's running total).
   refundedTotalMinor: number;
+  payments: PaymentFacts;
   items: ItemFacts[];
 }
 

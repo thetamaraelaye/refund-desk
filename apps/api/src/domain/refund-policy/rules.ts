@@ -67,6 +67,15 @@ export const itemAmountMinor = (item: ItemFacts) => item.unitPriceMinor * item.q
 
 const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ? '' : 's'}`;
 
+// UTC, so the same facts always produce the same trace text.
+const dateFormatter = new Intl.DateTimeFormat('en-GB', {
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+  timeZone: 'UTC',
+});
+const formatDate = (date: Date) => dateFormatter.format(date);
+
 // Rules that decide the refund itself wait until the item and the reason are known.
 function awaitingItemOrReason({ item, input }: RuleContext): Verdict | null {
   if (!item) return skip('Waits until the item is identified.');
@@ -141,19 +150,33 @@ export const POLICY_RULES: readonly PolicyRule[] = [
     },
   },
   {
-    // Not a mismatch: without payment records the checks cannot tell whether cancelling refunded it.
+    // A cancelled order is settled from its payment ledger: nothing owed is declined, money still held
+    // goes to a specialist (D17, revisited once payment records existed).
     id: 'order-status',
-    clause: '§7',
-    title: 'Order was not cancelled',
+    clause: '§6',
+    title: 'A cancelled order has nothing left to refund',
     evaluate: ({ order }) => {
       if (!order) return skip('No order on the account to check.');
-      if (order.status === 'CANCELLED') {
+      if (order.status !== 'CANCELLED') {
+        return pass(`${order.orderNumber} is ${order.status.toLowerCase()}.`);
+      }
+      const money = (minor: number) => formatMoney(minor, order.currency);
+      const { chargedMinor, refundedMinor, lastRefundAt } = order.payments;
+      const outstanding = chargedMinor - refundedMinor;
+      if (outstanding > 0) {
         return fail(
           'ESCALATED',
-          `${order.orderNumber} was cancelled; the checks cannot see whether it was refunded.`,
+          `${order.orderNumber} was cancelled, but ${money(outstanding)} of its ${money(chargedMinor)} charge has not been refunded.`,
         );
       }
-      return pass(`${order.orderNumber} is ${order.status.toLowerCase()}.`);
+      if (chargedMinor === 0) {
+        return fail('DENIED', `${order.orderNumber} was cancelled before it was charged.`);
+      }
+      const when = lastRefundAt ? ` on ${formatDate(lastRefundAt)}` : '';
+      return fail(
+        'DENIED',
+        `${order.orderNumber} was cancelled and its ${money(chargedMinor)} charge was refunded${when}.`,
+      );
     },
   },
   {

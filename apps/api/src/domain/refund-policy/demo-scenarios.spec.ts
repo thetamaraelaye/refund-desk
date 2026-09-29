@@ -1,5 +1,11 @@
 import { DEMO_SCENARIOS, type DemoScenario } from '../../database/demo-scenarios';
-import { SEED_CURRENCY, SEED_CUSTOMERS, type SeedOrder } from '../../database/seed-data';
+import {
+  SEED_CURRENCY,
+  SEED_CUSTOMERS,
+  seedLineMinor,
+  seedPayments,
+  type SeedOrder,
+} from '../../database/seed-data';
 import { evaluateRefundPolicy } from './evaluate';
 import { FAIR_USE_WINDOW_DAYS } from './policy-config';
 import type { CustomerClaim, OrderFacts, PolicyInput, RequestSignals } from './types';
@@ -45,24 +51,38 @@ const READINGS: Record<string, ScenarioReading> = {
   'wrong-item': { orderNumber: 'ORD-1015', itemSku: 'BTH-TOWL-GR', reason: 'WRONG_ITEM' },
   // Extraction only sees the customer's own orders, so it cannot match the TV to a SKU.
   'cross-account': { orderNumber: 'ORD-1004', itemMentioned: true, reason: 'DAMAGED' },
+  'cancelled-refunded': { orderNumber: 'ORD-1016', itemSku: 'OFF-CHAIR-01', reason: 'OTHER' },
+  'cancelled-still-charged': {
+    orderNumber: 'ORD-1017',
+    itemSku: 'APP-RAIN-JK',
+    reason: 'OTHER',
+    claimedAmountMinor: 8900,
+  },
 };
 
 const refunded = (seedOrder: SeedOrder) =>
   seedOrder.items.filter((i) => i.refundedDaysAgo !== undefined);
 
+const at = (days: number | undefined) => (days === undefined ? null : daysAgo(days));
+
 function orderFacts(customerEmail: string, seedOrder: SeedOrder): OrderFacts {
+  const payments = seedPayments(seedOrder);
+  const refunds = payments.filter((p) => p.kind === 'REFUND');
+  const sum = (list: typeof payments) => list.reduce((total, p) => total + p.amountMinor, 0);
   return {
     id: seedOrder.orderNumber,
     orderNumber: seedOrder.orderNumber,
     customerId: customerEmail,
     status: seedOrder.status,
     currency: SEED_CURRENCY,
-    deliveredAt:
-      seedOrder.deliveredDaysAgo === undefined ? null : daysAgo(seedOrder.deliveredDaysAgo),
-    refundedTotalMinor: refunded(seedOrder).reduce(
-      (sum, i) => sum + i.unitPriceMinor * (i.quantity ?? 1),
-      0,
-    ),
+    deliveredAt: at(seedOrder.deliveredDaysAgo),
+    cancelledAt: at(seedOrder.cancelledDaysAgo),
+    refundedTotalMinor: refunded(seedOrder).reduce((total, i) => total + seedLineMinor(i), 0),
+    payments: {
+      chargedMinor: sum(payments.filter((p) => p.kind === 'CHARGE')),
+      refundedMinor: sum(refunds),
+      lastRefundAt: at(refunds.length ? Math.min(...refunds.map((p) => p.daysAgo)) : undefined),
+    },
     items: seedOrder.items.map((i) => ({
       id: i.sku,
       sku: i.sku,

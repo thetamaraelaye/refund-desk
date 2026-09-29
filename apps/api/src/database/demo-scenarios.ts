@@ -178,4 +178,23 @@ export const DEMO_SCENARIOS: readonly DemoScenario[] = [
     decisiveClause: '§5a',
     featured: false,
   },
+  {
+    key: 'cancelled-refunded',
+    title: 'Cancelled order, already refunded',
+    customerEmail: 'kwame.mensah@example.com',
+    message: 'I cancelled ORD-1016 last week. When do I get my money back for the office chair?',
+    expected: 'DENIED',
+    decisiveClause: '§6',
+    featured: false,
+  },
+  {
+    key: 'cancelled-still-charged',
+    title: 'Cancelled order, still charged',
+    customerEmail: 'julia.santos@example.com',
+    message:
+      "I cancelled ORD-1017 two days ago but I've still been charged $89 for the rain jacket.",
+    expected: 'ESCALATED',
+    decisiveClause: '§6',
+    featured: false,
+  },
 ];

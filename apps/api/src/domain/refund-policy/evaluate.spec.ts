@@ -34,7 +34,9 @@ function order(overrides: Partial<OrderFacts> = {}): OrderFacts {
     status: 'DELIVERED',
     currency: 'USD',
     deliveredAt: daysAgo(6),
+    cancelledAt: null,
     refundedTotalMinor: 0,
+    payments: { chargedMinor: 4800, refundedMinor: 0, lastRefundAt: null },
     items: [item()],
     ...overrides,
   };
@@ -334,15 +336,55 @@ describe('evaluateRefundPolicy', () => {
       expect(decision.outcome).toBe('ESCALATED');
       expect(decision.decisiveRule).toBe('amount-matches');
     });
+  });
 
-    it('sends a cancelled order to a specialist under §7, without calling it a mismatch', () => {
-      const decision = evaluateRefundPolicy(
-        input({ order: order({ status: 'CANCELLED' }), claim: { reason: 'WRONG_ITEM' } }),
+  describe('§6 cancelled orders, settled by the payment ledger', () => {
+    const cancelled = (payments: OrderFacts['payments']) =>
+      evaluateRefundPolicy(
+        input({
+          order: order({
+            status: 'CANCELLED',
+            deliveredAt: null,
+            cancelledAt: daysAgo(5),
+            payments,
+          }),
+          claim: { reason: 'OTHER' },
+        }),
       );
 
-      expect(decision.outcome).toBe('ESCALATED');
+    it('declines when the charge was refunded in full, and says when', () => {
+      const decision = cancelled({
+        chargedMinor: 4800,
+        refundedMinor: 4800,
+        lastRefundAt: new Date('2026-09-24T09:00:00Z'),
+      });
+
+      expect(decision.outcome).toBe('DENIED');
       expect(decision.decisiveRule).toBe('order-status');
-      expect(decision.decisiveClause).toBe('§7');
+      expect(decision.decisiveClause).toBe('§6');
+      expect(ruleResult(decision, 'order-status')?.detail).toBe(
+        'ORD-1001 was cancelled and its $48.00 charge was refunded on 24 Sept 2026.',
+      );
+    });
+
+    it('declines when the order was cancelled before it was charged', () => {
+      const decision = cancelled({ chargedMinor: 0, refundedMinor: 0, lastRefundAt: null });
+
+      expect(decision.outcome).toBe('DENIED');
+    });
+
+    it.each([
+      ['nothing was refunded', 0],
+      ['only part was refunded', 2000],
+    ])('sends it to a specialist when %s, without calling it a mismatch', (_label, refunded) => {
+      const decision = cancelled({
+        chargedMinor: 4800,
+        refundedMinor: refunded,
+        lastRefundAt: null,
+      });
+
+      expect(decision.outcome).toBe('ESCALATED');
+      expect(decision.decisiveClause).toBe('§6');
       expect(decision.flags).toEqual([]);
     });
   });

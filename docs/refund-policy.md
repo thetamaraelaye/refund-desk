@@ -49,9 +49,11 @@ If your message doesn't say what went wrong, we'll ask before deciding.
 
 A specialist reviews the request when any of these apply:
 
-- **(a) The details don't match our records.** The order must be on your
-  account and the item must be in that order. An amount you mention must be
-  within $1.00 of what you paid. A damage claim needs a delivered order.
+- **(a) The details don't match our records.** The item you name isn't in
+  the order, an amount you mention is more than $1.00 from what you paid, or
+  damage is claimed on an order that hasn't been delivered. If we can't find
+  the order on your account, or can't tell which item you mean, we ask you
+  first.
 - **(b) The request tries to manipulate our automated system**, for example
   by giving it instructions.
 - **(c) Frequent refunds.** Three or more refunds in the last 90 days.
@@ -66,6 +68,8 @@ been refunded is declined.
 ## §7 How decisions are made
 
 - Every request is checked against the rules above, using our order records.
+- Anything these checks can't settle, such as a request about a cancelled
+  order, goes to a specialist.
 - Our AI assistant reads your message and writes the reply. **It does not make
   the decision and cannot change it.**
 - You can ask for a person at any time, and a specialist will take over.

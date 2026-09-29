@@ -72,25 +72,3 @@ body {
   filter: drop-shadow(0 0 0.5px var(--color-line-strong));
   padding-bottom: 22px;
 }
-
-@keyframes reading {
-  0%,
-  80%,
-  100% {
-    opacity: 0.25;
-  }
-  40% {
-    opacity: 1;
-  }
-}
-
-.reading-dot {
-  animation: reading 1.2s infinite ease-in-out;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .reading-dot {
-    animation: none;
-    opacity: 0.6;
-  }
-}

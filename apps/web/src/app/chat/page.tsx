@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { AppHeader } from '@/components/app-header';
-import { Button } from '@/components/ui/button';
+import { Button, Spinner } from '@/components/ui/button';
 import { cn } from '@/components/ui/cn';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { StatusBadge } from '@/components/ui/status-badge';
@@ -130,7 +130,7 @@ function Chat() {
             request={request}
             loading={Boolean(requestId) && current.isPending}
             pendingText={pendingText}
-            reading={send.isPending || handoff.isPending}
+            working={send.isPending ? 'message' : handoff.isPending ? 'handoff' : null}
           />
 
           {current.isError && !signedOut && (
@@ -243,12 +243,12 @@ function Conversation({
   request,
   loading,
   pendingText,
-  reading,
+  working,
 }: {
   request: CustomerRequest | null;
   loading: boolean;
   pendingText: string | null;
-  reading: boolean;
+  working: WorkingMode | null;
 }) {
   const end = useRef<HTMLDivElement>(null);
   const count = (request?.messages.length ?? 0) + (pendingText ? 1 : 0);
@@ -256,7 +256,7 @@ function Conversation({
   // Keep the newest message in view as the conversation grows.
   useEffect(() => {
     end.current?.scrollIntoView({ block: 'end', behavior: 'smooth' });
-  }, [count, reading]);
+  }, [count, working]);
 
   if (loading) return <LoadingState label="Loading the conversation…" className="flex-1" />;
 
@@ -276,17 +276,79 @@ function Conversation({
         <Bubble key={message.id} role={message.role} body={message.body} at={message.createdAt} />
       ))}
       {pendingText && <Bubble role="CUSTOMER" body={pendingText} />}
-      {reading && (
-        <p role="status" className="flex items-center gap-2 text-[13px] text-muted">
-          <span aria-hidden="true" className="flex gap-1">
-            <span className="reading-dot size-1.5 rounded-full bg-muted" />
-            <span className="reading-dot size-1.5 rounded-full bg-muted [animation-delay:150ms]" />
-            <span className="reading-dot size-1.5 rounded-full bg-muted [animation-delay:300ms]" />
-          </span>
-          Checking your order records…
-        </p>
-      )}
+      {working && <Working mode={working} />}
       <div ref={end} />
+    </div>
+  );
+}
+
+type WorkingMode = 'message' | 'handoff';
+
+// The stages every message really goes through, in order. The API answers in one response, so the
+// steps advance on a schedule close to typical timings, and the last one holds until the reply lands.
+const STEPS: Record<WorkingMode, { label: string; at: number }[]> = {
+  message: [
+    { label: 'Reading your message', at: 0 },
+    { label: 'Finding your order and payments', at: 1_800 },
+    { label: 'Checking our refund policy', at: 3_000 },
+    { label: 'Writing your reply', at: 4_000 },
+  ],
+  handoff: [
+    { label: 'Saving your conversation', at: 0 },
+    { label: 'Passing it to our support team', at: 900 },
+  ],
+};
+
+function Working({ mode }: { mode: WorkingMode }) {
+  const [elapsed, setElapsed] = useState(0);
+
+  useEffect(() => {
+    const started = Date.now();
+    const timer = setInterval(() => setElapsed(Date.now() - started), 250);
+    return () => clearInterval(timer);
+  }, []);
+
+  const steps = STEPS[mode];
+  const current = steps.findLastIndex((step) => elapsed >= step.at);
+
+  return (
+    <div className="flex max-w-[85%] flex-col gap-1 self-start">
+      <p className="text-xs text-muted">AI assistant</p>
+      <div className="rounded-panel rounded-bl-sm border border-line bg-surface px-4 py-3">
+        <p className="sr-only">{steps[current].label}…</p>
+        <ol aria-hidden="true" className="flex flex-col gap-2">
+          {steps.map((step, index) => {
+            const done = index < current;
+            const active = index === current;
+            return (
+              <li
+                key={step.label}
+                className={cn(
+                  'flex items-center gap-2.5 text-sm transition-all duration-300 ease-in-out',
+                  index > current && 'translate-y-0.5 opacity-40',
+                  active ? 'font-medium text-ink' : done ? 'text-ink-soft' : 'text-muted',
+                )}
+              >
+                <span className="flex size-4 shrink-0 items-center justify-center">
+                  {done ? (
+                    <span className="text-[13px] leading-none text-approved">✓</span>
+                  ) : active ? (
+                    <Spinner className="size-3.5 text-ink-soft" />
+                  ) : (
+                    <span className="size-2 rounded-full border border-line-strong" />
+                  )}
+                </span>
+                {step.label}
+              </li>
+            );
+          })}
+        </ol>
+        {elapsed > 12_000 && (
+          <p className="mt-2 text-xs text-muted">
+            Taking a little longer than usual. Still working on it.
+          </p>
+        )}
+      </div>
     </div>
   );
 }

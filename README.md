@@ -26,7 +26,7 @@ Then open **<http://localhost:3000>**.
 
 | Service | URL | Notes |
 |---|---|---|
-| Web app | <http://localhost:3000> | Customer chat and support dashboard |
+| Web app | <http://localhost:3000> | Customer help centre; support console at `/admin` |
 | API | <http://localhost:4000> | Interactive docs at [`/docs`](http://localhost:4000/docs) |
 | Postgres | `localhost:5433` | User, password and database are all `refunds` |
 
@@ -44,21 +44,29 @@ Then open **<http://localhost:3000>**.
 
 ## A five-minute tour
 
-1. **Sign in as a customer.** The sign-in page lists 15 demo customers. Each one's orders are
-   set up for a different part of the policy. Click a scenario: it signs you in with its
-   message ready to send.
-2. **Send the message.** The assistant says it's an AI, and "Talk to a person" stays visible
-   throughout. Your orders are listed beside the chat.
-3. **Open the support dashboard.** Sign in on the same page, in the same browser if you like;
-   the two sessions use separate cookies. Open the request to see the **decision receipt**:
-   every rule the policy ran, in order, with the facts behind it and the deciding line marked.
-   Next to it are the order's payment ledger and carrier tracking, and the full audit trail,
-   including what the model read.
-4. **Rule on an escalated or waiting request.** Approve or deny it with a note, including a
-   request still waiting for a customer who went quiet. The refund amount comes from the order,
-   and a specialist can't type one. The customer's chat updates on its own.
+The app is two products, as it would be in a real company: **Larkfield's help centre** for
+customers (<http://localhost:3000>), and **Refund Desk**, the support console for staff
+(<http://localhost:3000/admin>). A **Demo scenarios** button in the corner of the help centre
+holds the reviewer shortcuts, kept apart from the product itself.
 
-The brief's six cases come first on the sign-in page:
+1. **Try a scenario.** Open *Demo scenarios* and pick one. It signs you in as that customer with
+   the message ready to send. Or sign in with any demo account's email (listed under the
+   sign-in form; there are no passwords) and start from **Get help with this item** next to an
+   item in your orders.
+2. **Send the message.** The assistant says it's an AI, shows each stage while it works (reading
+   the message, finding the order and payments, checking the policy, writing the reply), and
+   "Talk to a person" stays visible throughout. If it's clear which order you mean, you don't
+   need the order number.
+3. **Open the support console** at `/admin` (password `refund-desk-admin`). It opens on
+   **Needs attention**: escalated and waiting requests, longest waiting first. Open a request to
+   see the **decision receipt**: every rule the policy ran, in order, with the facts behind it
+   and the deciding line marked. Next to it are the order's payment ledger and carrier tracking,
+   and the full audit trail, including what the model read.
+4. **Rule on a request.** Approve or deny an escalated or waiting request with a note. The refund
+   amount comes from the order, and a specialist can't type one. The customer's chat updates on
+   its own.
+
+The brief's six cases come first in *Demo scenarios*:
 
 | Scenario | Customer's message (abridged) | Outcome | Decided by |
 |---|---|---|---|

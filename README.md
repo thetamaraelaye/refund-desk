@@ -51,8 +51,9 @@ Then open **<http://localhost:3000>**.
    every rule the policy ran, in order, with the facts behind it and the deciding line marked.
    Next to it are the order's payment ledger and carrier tracking, and the full audit trail,
    including what the model read.
-4. **Rule on an escalation.** Approve or deny it with a note. The refund amount comes from the
-   order, and a specialist can't type one. The customer's chat updates on its own.
+4. **Rule on an escalated or waiting request.** Approve or deny it with a note, including a
+   request still waiting for a customer who went quiet. The refund amount comes from the order,
+   and a specialist can't type one. The customer's chat updates on its own.
 
 The brief's six cases come first on the sign-in page:
 
@@ -200,6 +201,10 @@ move money or change a decision.
   input.
 - **Picking the item:** the model chooses item SKUs from the customer's own orders. A SKU it
   invents is treated as a mismatch.
+- **Finding the order:** if the customer describes an item but gives no order number ("my
+  pour-over set arrived cracked"), the model matches it to the one order of theirs containing that
+  item. Code rejects an inferred order that isn't the customer's own, two matches means asking,
+  and the receipt records that the order was matched rather than typed.
 - **Mock model:** the same interface, using keyword rules and item-name matching. It runs
   offline and makes every scenario reproducible.
 - **What's recorded:** every result stores its mode, model, latency and token usage. The
@@ -251,10 +256,10 @@ One command runs every layer against a freshly started stack:
 
 | Layer | What it covers |
 |---|---|
-| **API unit tests** (`cd apps/api && npm test`, 131 tests, no database) | The policy engine at every boundary: $500.00 against $500.01, day 30 to the millisecond, a claimed amount $1.00 off against $1.01. Also rule precedence, and that a claim on another customer's order reveals nothing about it. All 20 demo scenarios run twice: from hand-written readings, and through the mock model, the real engine and the reply guard. Failure cases: a model timeout, an injection the model missed, drafts that claim the wrong outcome, invent an amount or reveal the checks |
+| **API unit tests** (`cd apps/api && npm test`, 136 tests, no database) | The policy engine at every boundary: $500.00 against $500.01, day 30 to the millisecond, a claimed amount $1.00 off against $1.01. Also rule precedence, and that a claim on another customer's order reveals nothing about it. All 20 demo scenarios run twice: from hand-written readings, and through the mock model, the real engine and the reply guard. Failure cases: a model timeout, an injection the model missed, drafts that claim the wrong outcome, invent an amount or reveal the checks |
 | **Web typecheck and lint** | Strict TypeScript, and `react/no-danger` as an error |
-| **API end-to-end** (`node apps/api/scripts/e2e.mjs`) | Drives the real API over HTTP: all 20 scenarios, sessions and ownership, closed requests, a two-message conversation, the handoff, a wrong staff password, and a specialist approving the $650 TV, with a 409 on a second ruling |
-| **Browser tests** (`cd e2e && npx playwright test`) | Real Chromium at desktop and phone sizes: the brief's six cases through the chat, the neutral reply to a prompt injection, "Talk to a person" before a first message, a two-message conversation to an approval, the orders panel, redirects when signed out, a specialist approving through the confirmation dialog (Escape cancels) with the customer's chat updating live, rows opened from the keyboard, and axe accessibility checks (WCAG 2.1 AA) on every page |
+| **API end-to-end** (`node apps/api/scripts/e2e.mjs`) | Drives the real API over HTTP: all 20 scenarios, sessions and ownership, closed requests, a two-message conversation, an order found from the item described, the handoff, a wrong staff password, a ruling on a waiting request, and a specialist approving the $650 TV, with a 409 on a second ruling |
+| **Browser tests** (`cd e2e && npx playwright test`) | Real Chromium at desktop and phone sizes: the brief's six cases through the chat, the neutral reply to a prompt injection, "Talk to a person" before a first message, a two-message conversation to an approval, the live working steps while a reply is prepared, the orders panel, redirects when signed out, a specialist approving through the confirmation dialog (Escape cancels) with the customer's chat updating live, a ruling on a request still waiting for the customer, rows opened from the keyboard, and axe accessibility checks (WCAG 2.1 AA) on every page |
 
 `test-everything.sh` pins the mock model, because the browser tests check exact reply wording.
 The live model is checked separately with the API end-to-end script, which checks outcomes, not

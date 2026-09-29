@@ -335,11 +335,15 @@ describe('evaluateRefundPolicy', () => {
       expect(decision.decisiveRule).toBe('amount-matches');
     });
 
-    it('escalates a claim on a cancelled order', () => {
-      const decision = evaluateRefundPolicy(input({ order: order({ status: 'CANCELLED' }) }));
+    it('sends a cancelled order to a specialist under §7, without calling it a mismatch', () => {
+      const decision = evaluateRefundPolicy(
+        input({ order: order({ status: 'CANCELLED' }), claim: { reason: 'WRONG_ITEM' } }),
+      );
 
       expect(decision.outcome).toBe('ESCALATED');
       expect(decision.decisiveRule).toBe('order-status');
+      expect(decision.decisiveClause).toBe('§7');
+      expect(decision.flags).toEqual([]);
     });
   });
 

@@ -141,13 +141,17 @@ export const POLICY_RULES: readonly PolicyRule[] = [
     },
   },
   {
+    // Not a mismatch: without payment records the checks cannot tell whether cancelling refunded it.
     id: 'order-status',
-    clause: '§5a',
+    clause: '§7',
     title: 'Order was not cancelled',
     evaluate: ({ order }) => {
       if (!order) return skip('No order on the account to check.');
       if (order.status === 'CANCELLED') {
-        return fail('ESCALATED', `${order.orderNumber} was cancelled.`, { flag: 'CLAIM_MISMATCH' });
+        return fail(
+          'ESCALATED',
+          `${order.orderNumber} was cancelled; the checks cannot see whether it was refunded.`,
+        );
       }
       return pass(`${order.orderNumber} is ${order.status.toLowerCase()}.`);
     },

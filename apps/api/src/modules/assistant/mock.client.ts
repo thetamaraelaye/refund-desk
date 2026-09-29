@@ -44,7 +44,7 @@ const REASONS: [Extraction['reason'], RegExp][] = [
   ],
   [
     'DAMAGED',
-    /\b(damag\w*|broken|broke|crack\w*|torn|tear|split|defect\w*|faulty|stopped (working|charging)|(doesn't|does not|won't) (work|turn on|charge)|not working|shatter\w*|dent\w*|smashed|leak\w*)\b/i,
+    /\b(damag\w*|broken|broke|crack\w*|torn|tear|split|defect\w*|faulty|stopped (working|charging)|(doesn't|does not|won't) (work|turn on|charge)|not working|shatter\w*|dent\w*|bent|smashed|leak\w*|scratch\w*|chipped|ripped|stain\w*|missing (parts|pieces))\b/i,
   ],
   ['OTHER', /\b(charged|cancel\w*|billing|invoice|double charge)\b/i],
 ];

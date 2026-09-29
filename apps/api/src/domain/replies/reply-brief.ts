@@ -156,11 +156,11 @@ const joinList = (parts: string[], conjunction = 'and') =>
 
 // The deterministic reply: used by the mock model, and whenever a model draft fails the guard.
 export function templateReply(brief: ReplyBrief): string {
-  const parts = [`Hi ${brief.customerFirstName},`, brief.explanation];
+  const parts = [brief.explanation];
   if (brief.missing.length > 0) {
     const choices = brief.itemChoices.length > 0 ? ` (${joinList(brief.itemChoices, 'or')})` : '';
     parts.push(`Could you tell me ${joinList(brief.missing)}${choices}?`);
   }
   if (brief.nextStep) parts.push(brief.nextStep);
-  return parts.join(' ');
+  return `Hi ${brief.customerFirstName},\n${parts.join(' ')}`;
 }

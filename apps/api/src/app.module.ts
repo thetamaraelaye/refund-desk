@@ -8,6 +8,7 @@ import { GlobalModule } from './global.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { CustomersModule } from './modules/customers/customers.module';
 import { HealthModule } from './modules/health/health.module';
+import { RequestsModule } from './modules/requests/requests.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { HealthModule } from './modules/health/health.module';
     HealthModule,
     CustomersModule,
     AuthModule,
+    RequestsModule,
   ],
   providers: [
     // Order matters: throttle first, then require a session.

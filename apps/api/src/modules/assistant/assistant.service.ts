@@ -61,7 +61,11 @@ export class AssistantService {
     let call: LlmCall | null;
     let extractionError: string | null = null;
     try {
-      ({ data: extraction, call } = await this.llm.extract(input));
+      // Nothing to read yet (a handoff before the first message): no model call.
+      ({ data: extraction, call } =
+        input.customerMessages.length === 0
+          ? { data: readMessages(input), call: null }
+          : await this.llm.extract(input));
     } catch (error) {
       extractionError = error instanceof LlmFailure ? error.message : 'The model call failed';
       call = error instanceof LlmFailure ? error.call : null;

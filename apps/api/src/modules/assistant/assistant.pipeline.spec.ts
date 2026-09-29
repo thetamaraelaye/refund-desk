@@ -108,6 +108,16 @@ describe('the mock model, the policy engine and the reply guard, end to end', ()
     expect(second.decision.outcome).toBe('APPROVED');
   });
 
+  it.each(['bent', 'scratched', 'chipped', 'ripped', 'stained', 'missing parts'])(
+    'reads "arrived %s" as damage',
+    async (word) => {
+      const { decision } = await run(service, 'kwame.mensah@example.com', [
+        `The laptop stand from ORD-1014 arrived ${word}.`,
+      ]);
+      expect(decision.outcome).toBe('APPROVED');
+    },
+  );
+
   it('hands off to a person when asked, even mid-claim', async () => {
     const { decision } = await run(service, 'amara.okafor@example.com', [
       'My pour-over set from ORD-1001 arrived cracked. Can I talk to a real person?',

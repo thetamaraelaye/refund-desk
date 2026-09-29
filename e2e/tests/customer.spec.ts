@@ -107,6 +107,23 @@ test(
   },
 );
 
+test('shows what it is doing while it works on a reply', { tag: '@phone' }, async ({ page }) => {
+  await startScenario(page, 'Final sale item');
+  // The mock answers in milliseconds; hold the request so the working steps are visible.
+  await page.route('**/api/v1/requests/messages', async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 3_500));
+    await route.continue();
+  });
+  await page.getByRole('button', { name: 'Send' }).click();
+
+  // Exact matches pick the visible step, not its screen-reader announcement ("Reading your message…").
+  const firstStep = page.getByText('Reading your message', { exact: true });
+  await expect(firstStep).toBeVisible();
+  await expect(page.getByText('Checking our refund policy', { exact: true })).toBeVisible();
+  await expect(badge(chatPanel(page), 'Not refunded')).toBeVisible();
+  await expect(firstStep).toHaveCount(0);
+});
+
 test('sends signed-out visitors to sign in', { tag: '@phone' }, async ({ page }) => {
   await page.goto('/chat');
   await expect(page).toHaveURL(/\/$/);

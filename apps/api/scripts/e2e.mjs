@@ -99,6 +99,13 @@ const followed = (
 check('the follow-up completes the claim', followed.status === 'APPROVED', followed.status);
 const handed = (await kwameCall('POST', '/requests/handoff', {})).body.data;
 check('"talk to a person" before any message escalates', handed.status === 'ESCALATED');
+const ethan = customers.find((c) => c.email === 'ethan.brooks@example.com');
+const inferred = (
+  await (await customerSession(ethan))('POST', '/requests/messages', {
+    message: 'My running shoes arrived with the sole split open.',
+  })
+).body.data;
+check('finds the order from the item described, with no order number', inferred.status === 'APPROVED', inferred.status);
 
 console.log('\nSupport dashboard');
 const staff = client();
@@ -132,6 +139,12 @@ check(
   'resolving it again → 409',
   (await staff('POST', `/admin/requests/${tvId}/resolution`, { action: 'DENY', note: 'again' })).status === 409,
 );
+const waitingId = requestIds['multi-item-vague'];
+const waiting = await staff('POST', `/admin/requests/${waitingId}/resolution`, {
+  action: 'DENY',
+  note: 'Customer did not say which item; closing.',
+});
+check('a specialist can rule on a request still waiting on the customer', waiting.body?.data?.status === 'DENIED', waiting.status);
 const marcus = customers.find((c) => c.email === 'marcus.webb@example.com');
 const marcusView = (await (await customerSession(marcus))('GET', `/requests/${tvId}`)).body.data;
 check('the customer sees the specialist’s message', marcusView.messages.at(-1).role === 'STAFF');

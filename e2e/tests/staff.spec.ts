@@ -36,7 +36,10 @@ test('a specialist approves an escalated refund and the customer is told', async
   const staff = await staffContext.newPage();
   await staff.goto('/admin');
   await staff.getByRole('button', { name: /^Escalated/ }).click();
-  await staff.getByRole('row').filter({ hasText: reference }).click();
+  await staff
+    .getByRole('row')
+    .filter({ hasText: new RegExp(`${reference}\\b`) })
+    .click();
 
   // The receipt marks the rule that decided it.
   const receipt = staff.getByRole('list', { name: 'Rules checked, in order' });
@@ -91,5 +94,35 @@ test('requests open from the keyboard, and the dashboard has no serious accessib
   await expect(staff.getByRole('heading', { name: 'How the policy decided' })).toBeVisible();
 
   await expectNoSeriousA11yIssues(staff);
+  await staffContext.close();
+});
+
+test('a specialist can rule on a request that is still waiting for the customer', async ({
+  page,
+  browser,
+}) => {
+  await startScenario(page, 'No reason given');
+  await send(page);
+  const chat = chatPanel(page);
+  await expect(badge(chat, 'Waiting for your reply')).toBeVisible();
+  const reference = (await chat.getByRole('heading').first().innerText()).replace('Request ', '');
+
+  const staffContext = await browser.newContext({ storageState: STAFF_STATE });
+  const staff = await staffContext.newPage();
+  await staff.goto('/admin?status=NEEDS_INFO');
+  await staff
+    .getByRole('row')
+    .filter({ hasText: new RegExp(`${reference}\\b`) })
+    .click();
+  await expect(staff.getByText(/waiting for the customer to reply/)).toBeVisible();
+
+  await staff.getByLabel('Note for the audit trail').fill('No reply from the customer.');
+  await staff.getByRole('button', { name: 'Deny request' }).click();
+  const dialog = staff.getByRole('dialog', { name: 'Deny this request?' });
+  await dialog.getByRole('button', { name: 'Deny request' }).click();
+  await expect(staff.getByText(/Ada Obi\s+denied this on/)).toBeVisible();
+
+  // The waiting customer's chat picks up the ruling on its own.
+  await expect(badge(chat, 'Not refunded')).toBeVisible({ timeout: 20_000 });
   await staffContext.close();
 });

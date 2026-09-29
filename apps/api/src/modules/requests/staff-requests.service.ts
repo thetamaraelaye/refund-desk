@@ -127,12 +127,18 @@ export class StaffRequestsService {
   constructor(private readonly prisma: PrismaConfig) {}
 
   async list(query: ListRequestsQuery) {
-    const where: Prisma.RefundRequestWhereInput = query.status ? { status: query.status } : {};
+    const attention = !query.status && query.view === 'attention';
+    const where: Prisma.RefundRequestWhereInput = query.status
+      ? { status: query.status }
+      : attention
+        ? { status: { in: [...RESOLVABLE] } }
+        : {};
     const [items, total, byStatus] = await Promise.all([
       this.prisma.refundRequest.findMany({
         where,
         select: LIST_SELECT,
-        orderBy: { updatedAt: 'desc' },
+        // The queue serves whoever has waited longest; every other view shows newest activity first.
+        orderBy: attention ? { createdAt: 'asc' } : { updatedAt: 'desc' },
         skip: (query.page - 1) * query.limit,
         take: query.limit,
       }),

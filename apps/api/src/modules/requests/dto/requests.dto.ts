@@ -30,6 +30,12 @@ export class ListRequestsQuery {
   @IsEnum(RequestStatus)
   status?: RequestStatus;
 
+  // The working queue: escalated and waiting requests, oldest first. Ignored when status is set.
+  @ApiPropertyOptional({ enum: ['attention'] })
+  @IsOptional()
+  @IsIn(['attention'])
+  view?: 'attention';
+
   @ApiPropertyOptional({ default: 1 })
   @IsOptional()
   @Type(() => Number)

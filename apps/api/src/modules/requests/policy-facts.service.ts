@@ -30,15 +30,17 @@ const ORDER_SELECT = {
       quantity: true,
       unitPriceMinor: true,
       finalSale: true,
-      refund: { select: { amountMinor: true } },
+      refund: { select: { amountMinor: true, issuedAt: true } },
     },
     orderBy: { sku: 'asc' },
   },
 } satisfies Prisma.OrderSelect;
 
-// The facts the engine needs, plus the card the order was paid with, for the reply.
+// The facts the engine needs, plus what the reply may tell the customer: the card the order was paid
+// with, and when each item was refunded.
 export interface OrderContext extends OrderFacts {
   chargeMethod: string | null;
+  itemRefundedAt: Record<string, Date>;
 }
 
 export interface LoadedFacts {
@@ -141,6 +143,9 @@ export class PolicyFactsService {
         alreadyRefunded: i.refund !== null,
       })),
       chargeMethod: charge?.method ?? null,
+      itemRefundedAt: Object.fromEntries(
+        order.items.flatMap((i) => (i.refund ? [[i.id, i.refund.issuedAt]] : [])),
+      ),
     };
   }
 

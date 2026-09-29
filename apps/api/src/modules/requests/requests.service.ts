@@ -257,6 +257,7 @@ function replyFacts(
     itemChoices: own?.items.map((i) => i.name) ?? [],
     paymentMethod: own?.chargeMethod ?? null,
     lastRefundAt: own?.payments.lastRefundAt ?? null,
+    itemRefundedAt: (item && own?.itemRefundedAt[item.id]) ?? null,
     deliveredDaysAgo: own?.deliveredAt
       ? Math.floor((now.getTime() - own.deliveredAt.getTime()) / DAY_MS)
       : null,

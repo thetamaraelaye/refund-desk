@@ -37,6 +37,7 @@ function replyFacts(email: string, decision: PolicyDecision): ReplyFacts {
     itemChoices: order?.items.map((i) => i.name) ?? [],
     paymentMethod: 'Visa •••• 4242',
     lastRefundAt: order?.payments.lastRefundAt ?? null,
+    itemRefundedAt: item?.alreadyRefunded ? new Date('2026-09-23T10:00:00Z') : null,
     deliveredDaysAgo: order?.deliveredAt
       ? Math.floor((NOW.getTime() - order.deliveredAt.getTime()) / DAY_MS)
       : null,
@@ -106,6 +107,16 @@ describe('the mock model, the policy engine and the reply guard, end to end', ()
       "It's ORD-1014, the laptop stand arrived bent and dented.",
     ]);
     expect(second.decision.outcome).toBe('APPROVED');
+  });
+
+  it('tells the customer when and where an already-refunded item went', async () => {
+    const { decision, reply } = await run(service, 'omar.haddad@example.com', [
+      'The blender from ORD-1009 is broken, I want my money back.',
+    ]);
+
+    expect(decision.decisiveRule).toBe('already-refunded');
+    expect(reply.text).toContain('was already refunded on 23 September to Visa •••• 4242');
+    expect(reply.text).toContain('banks can take 5–10 business days');
   });
 
   it.each(['bent', 'scratched', 'chipped', 'ripped', 'stained', 'missing parts'])(

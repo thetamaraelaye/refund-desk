@@ -12,6 +12,8 @@ export interface ReplyFacts {
   itemChoices: string[];
   paymentMethod: string | null;
   lastRefundAt: Date | null;
+  // When the item in question was refunded, if it was.
+  itemRefundedAt: Date | null;
   deliveredDaysAgo: number | null;
 }
 
@@ -96,10 +98,14 @@ export function buildReplyBrief(decision: PolicyDecision, facts: ReplyFacts): Re
         explanation = `The item you mentioned doesn't match what we have on ${order}, so I've passed this to our support team to check.`;
       }
       break;
-    case 'already-refunded':
-      explanation = `${capitalise(item)} from ${order} has already been refunded, so I can't refund it again.`;
-      nextStep = null;
+    case 'already-refunded': {
+      // Say when and where the money went, so the customer can find it instead of hitting a dead end.
+      const when = facts.itemRefundedAt ? ` on ${dateFormatter.format(facts.itemRefundedAt)}` : '';
+      const where = facts.paymentMethod ? ` to ${facts.paymentMethod}` : '';
+      explanation = `${capitalise(item)} from ${order} was already refunded${when}${where}, so it can't be refunded a second time.`;
+      nextStep = "If it isn't on your statement yet, banks can take 5–10 business days to show it.";
       break;
+    }
     case 'reason-given':
       explanation = 'I can look into this as soon as I know what happened.';
       nextStep = null;

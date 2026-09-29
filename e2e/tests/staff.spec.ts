@@ -10,13 +10,13 @@ import {
 } from './helpers';
 
 test('a wrong password is refused inline', async ({ page }) => {
-  await page.goto('/?signin=staff');
+  await page.goto('/admin/sign-in');
   await page.getByLabel('Your name').fill('Ada Obi');
   await page.getByLabel('Password').fill(`${STAFF_PASSWORD}-wrong`);
-  await page.getByRole('button', { name: 'Open the dashboard' }).click();
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
 
   await expect(page.getByText('That password is not correct')).toBeVisible();
-  await expect(page).not.toHaveURL(/\/admin/);
+  await expect(page).toHaveURL(/\/admin\/sign-in$/);
 });
 
 test('a specialist approves an escalated refund and the customer is told', async ({
@@ -124,5 +124,22 @@ test('a specialist can rule on a request that is still waiting for the customer'
 
   // The waiting customer's chat picks up the ruling on its own.
   await expect(badge(chat, 'Not refunded')).toBeVisible({ timeout: 20_000 });
+  await staffContext.close();
+});
+
+test('the console has its own door, and opens on the requests that need a person', async ({
+  page,
+  browser,
+}) => {
+  await page.goto('/admin');
+  await expect(page).toHaveURL(/\/admin\/sign-in$/);
+
+  const staffContext = await browser.newContext({ storageState: STAFF_STATE });
+  const staff = await staffContext.newPage();
+  await staff.goto('/admin');
+  await expect(staff.getByRole('button', { name: /^Needs attention/ })).toHaveAttribute(
+    'aria-current',
+    'page',
+  );
   await staffContext.close();
 });

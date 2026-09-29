@@ -61,7 +61,7 @@ test(
   'says it is an AI and offers a person before anything is typed',
   { tag: '@phone' },
   async ({ page }) => {
-    await signInAs(page, 'Kwame Mensah');
+    await signInAs(page, 'kwame.mensah@example.com');
     await expect(page.getByText(/talking to an AI assistant/)).toBeVisible();
 
     await page.getByRole('button', { name: 'Talk to a person' }).click();
@@ -98,12 +98,34 @@ test('asks which item on a multi-item order, then approves the answer', async ({
 });
 
 test(
-  'adds an order number to the message from the orders panel',
+  'starts a message from the item, like a real help centre',
   { tag: '@phone' },
   async ({ page }) => {
-    await signInAs(page, 'Grace Kim');
-    await page.getByRole('button', { name: 'Add ORD-1003 to your message' }).click();
-    await expect(page.getByLabel('Your message', { exact: true })).toHaveValue('ORD-1003');
+    await signInAs(page, 'grace.kim@example.com');
+    await page
+      .getByRole('button', { name: 'Get help with the Adjustable LED desk lamp from ORD-1003' })
+      .click();
+    const message = page.getByLabel('Your message', { exact: true });
+    await expect(message).toHaveValue(
+      'I need help with the Adjustable LED desk lamp from ORD-1003. ',
+    );
+    await expect(message).toBeFocused();
+  },
+);
+
+test(
+  'the help centre is for customers only: no staff sign-in form',
+  { tag: '@phone' },
+  async ({ page }) => {
+    await page.goto('/');
+    await expect(
+      page.getByRole('heading', { name: 'Something wrong with an order?' }),
+    ).toBeVisible();
+    await expect(page.getByLabel('Password')).toHaveCount(0);
+    await expect(page.getByRole('link', { name: 'Staff sign-in' })).toHaveAttribute(
+      'href',
+      '/admin/sign-in',
+    );
   },
 );
 
@@ -134,8 +156,9 @@ test(
   { tag: '@phone' },
   async ({ page }) => {
     await page.goto('/');
-    await expect(page.getByRole('heading', { name: 'Try it as a customer' })).toBeVisible();
-    await expect(page.getByRole('button', { name: /^Damaged item/ })).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: 'Something wrong with an order?' }),
+    ).toBeVisible();
     await expectNoSeriousA11yIssues(page);
 
     await startScenario(page, 'Change of mind');

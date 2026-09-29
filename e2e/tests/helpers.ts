@@ -12,14 +12,20 @@ const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 // Clicks a scenario on the sign-in page: signs in as its customer with its message ready to send.
 export async function startScenario(page: Page, title: string) {
   await page.goto('/');
-  await page.getByRole('button', { name: new RegExp(`^${escape(title)}`) }).click();
+  await page.getByRole('button', { name: 'Demo scenarios' }).click();
+  await page
+    .getByRole('dialog', { name: 'Demo scenarios' })
+    .getByRole('button', { name: new RegExp(`^${escape(title)}`) })
+    .click();
   await expect(page).toHaveURL(/\/chat\?try=/);
   await expect(page.getByLabel('Your message', { exact: true })).not.toHaveValue('');
 }
 
-export async function signInAs(page: Page, customerName: string) {
+// Signs in the way a customer would: the help centre's email sign-in (demo accounts have no password).
+export async function signInAs(page: Page, email: string) {
   await page.goto('/');
-  await page.getByRole('button', { name: `Sign in as ${customerName}` }).click();
+  await page.getByLabel('Email address').fill(email);
+  await page.getByRole('button', { name: 'Continue' }).click();
   await expect(page).toHaveURL(/\/chat$/);
 }
 
@@ -37,11 +43,12 @@ export const badge = (scope: Locator, label: string) =>
 export const chatPanel = (page: Page) => page.getByRole('region', { name: /^Request #\d+$/ });
 
 export async function signInStaff(page: Page, name = 'Ada Obi') {
-  await page.goto('/?signin=staff');
+  await page.goto('/admin/sign-in');
   await page.getByLabel('Your name').fill(name);
   await page.getByLabel('Password').fill(STAFF_PASSWORD);
-  await page.getByRole('button', { name: 'Open the dashboard' }).click();
-  await expect(page).toHaveURL(/\/admin/);
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  // The console itself, not /admin/sign-in: a refused or rate-limited sign-in must fail here.
+  await expect(page).toHaveURL(/\/admin(\?.*)?$/);
 }
 
 // WCAG 2.1 A and AA; the build fails on anything axe rates serious or critical.

@@ -1,8 +1,10 @@
 import { Controller, Get, ServiceUnavailableException, VERSION_NEUTRAL } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Public } from '@common';
 import { PrismaConfig } from '@configs';
 
 @ApiTags('Health')
+@Public()
 @Controller({ path: 'health', version: VERSION_NEUTRAL })
 export class HealthController {
   constructor(private readonly prisma: PrismaConfig) {}

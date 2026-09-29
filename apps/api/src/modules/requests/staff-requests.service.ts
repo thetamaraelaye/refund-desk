@@ -13,6 +13,12 @@ import { isUniqueViolation, issueRefund } from './refund-ledger';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+// Open requests a specialist can rule on; approved and denied ones are final.
+const RESOLVABLE: ReadonlySet<RequestStatus> = new Set([
+  RequestStatus.ESCALATED,
+  RequestStatus.NEEDS_INFO,
+]);
+
 const LIST_SELECT = {
   id: true,
   reference: true,
@@ -170,8 +176,9 @@ export class StaffRequestsService {
     return { ...request, customer: { ...request.customer, recentRefunds } };
   }
 
-  // A specialist's ruling on an escalated request. Approval pays from the recorded price of the item the
-  // engine identified; the specialist cannot type an amount.
+  // A specialist's ruling on a request that is open: escalated to a person, or still waiting on the
+  // customer (who may never come back). Approval pays from the recorded price of the item the engine
+  // identified; the specialist cannot type an amount.
   async resolve(staff: StaffSession, id: string, body: ResolveRequestDto) {
     try {
       await this.prisma.$transaction(async (tx) => {
@@ -190,8 +197,10 @@ export class StaffRequestsService {
           },
         });
         if (!request) throw new NotFoundException('Request not found');
-        if (request.status !== RequestStatus.ESCALATED) {
-          throw new ConflictException('Only escalated requests can be resolved');
+        if (!RESOLVABLE.has(request.status)) {
+          throw new ConflictException(
+            'This request has already been decided. Only escalated or waiting requests can be resolved.',
+          );
         }
 
         const approve = body.action === 'APPROVE';

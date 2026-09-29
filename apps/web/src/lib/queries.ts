@@ -84,13 +84,16 @@ export const useMyRequests = () =>
     queryFn: () => request<CustomerRequest[]>({ url: '/requests/mine' }),
   });
 
-// Polls while a person may be answering, so a specialist's reply shows up without a refresh.
+// Polls while the request is open, so a specialist's ruling shows up without a refresh.
 export const useCustomerRequest = (id: string | null) =>
   useQuery({
     queryKey: keys.request(id ?? ''),
     queryFn: () => request<CustomerRequest>({ url: `/requests/${id}` }),
     enabled: Boolean(id),
-    refetchInterval: (query) => (query.state.data?.status === 'ESCALATED' ? 5_000 : false),
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      return status === 'ESCALATED' || status === 'NEEDS_INFO' ? 5_000 : false;
+    },
   });
 
 function useRequestUpdate() {

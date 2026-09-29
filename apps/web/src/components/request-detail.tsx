@@ -100,7 +100,9 @@ export function RequestDetail({ id, onBack }: { id: string; onBack: () => void }
         )}
       </Panel>
 
-      {request.status === 'ESCALATED' && <Resolution request={request} />}
+      {(request.status === 'ESCALATED' || request.status === 'NEEDS_INFO') && (
+        <Resolution request={request} />
+      )}
       {request.resolvedByName && request.resolvedAt && (
         <Panel className="p-5 text-[13px]">
           <p className="text-ink">
@@ -177,8 +179,19 @@ function Resolution({ request }: { request: StaffRequestDetail }) {
   };
 
   return (
-    <Panel className="border-escalated/40 p-5">
+    <Panel
+      className={cn(
+        'p-5',
+        request.status === 'ESCALATED' ? 'border-escalated/40' : 'border-waiting/40',
+      )}
+    >
       <h3 className="text-sm font-semibold text-ink">Your ruling</h3>
+      {request.status === 'NEEDS_INFO' && (
+        <p className="mt-1 text-[13px] text-ink-soft">
+          The assistant is waiting for the customer to reply. You can rule now, for example if they
+          have gone quiet or you can see the answer in their order history.
+        </p>
+      )}
       <p className="mt-1 text-[13px] text-muted">
         {refundable
           ? `Approving refunds ${amount} for the ${request.orderItem!.name}, the price on the order. The customer is told either way.`

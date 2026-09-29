@@ -13,9 +13,11 @@ export interface CurrencyRule {
   reviewThresholdMinor: number;
   // §5a: how far a claimed amount may be from what was paid before it counts as a mismatch.
   amountToleranceMinor: number;
+  // §7: the most the system may refund automatically per UTC day, so a bug costs one day's cap.
+  automaticDailyCapMinor: number;
 }
 
 // Per currency, never converted (D13). A currency missing here always goes to a person.
 export const CURRENCY_RULES: Readonly<Record<string, CurrencyRule>> = {
-  USD: { reviewThresholdMinor: 50_000, amountToleranceMinor: 100 },
+  USD: { reviewThresholdMinor: 50_000, amountToleranceMinor: 100, automaticDailyCapMinor: 250_000 },
 };

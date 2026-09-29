@@ -73,8 +73,16 @@ export interface RequestSignals {
   humanRequested: boolean;
 }
 
+// Guards on money leaving without a person: a kill switch and what is left of today's cap.
+export interface AutomationLimits {
+  refundsEnabled: boolean;
+  // In the order's currency; null when no cap is configured for it.
+  remainingTodayMinor: number | null;
+}
+
 export interface PolicyInput {
   now: Date;
+  automation: AutomationLimits;
   customerId: string;
   claim: CustomerClaim;
   signals: RequestSignals;
@@ -100,7 +108,8 @@ export type RuleId =
   | 'final-sale'
   | 'reason-eligible'
   | 'fair-use'
-  | 'review-threshold';
+  | 'review-threshold'
+  | 'automation-limit';
 
 export interface RuleResult {
   rule: RuleId;

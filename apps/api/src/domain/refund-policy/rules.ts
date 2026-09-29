@@ -368,4 +368,26 @@ export const POLICY_RULES: readonly PolicyRule[] = [
         : pass(`${described}, within ${limit}.`);
     },
   },
+  {
+    // Not a customer rule: an operational limit on money leaving without a person looking.
+    id: 'automation-limit',
+    clause: '§7',
+    title: "Within today's automatic refund limit",
+    evaluate: (context) => {
+      const waiting = awaitingItemOrReason(context);
+      if (waiting) return waiting;
+      const { refundsEnabled, remainingTodayMinor } = context.input.automation;
+      const order = context.order!;
+      if (!refundsEnabled) return fail('ESCALATED', 'Automatic refunds are switched off.');
+      if (remainingTodayMinor === null) {
+        return fail('ESCALATED', `No automatic refund limit is set for ${order.currency}.`);
+      }
+      const money = (minor: number) => formatMoney(minor, order.currency);
+      const amount = itemAmountMinor(context.item!);
+      const left = `${money(Math.max(remainingTodayMinor, 0))} left today`;
+      return amount > remainingTodayMinor
+        ? fail('ESCALATED', `${money(amount)} is over the automatic refund limit (${left}).`)
+        : pass(`${money(amount)} is within the automatic refund limit (${left}).`);
+    },
+  },
 ];

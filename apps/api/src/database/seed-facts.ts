@@ -80,6 +80,7 @@ export function seedPolicyInput(
   const customer = seedCustomer(email);
   return {
     now,
+    automation: { refundsEnabled: true, remainingTodayMinor: 250_000 },
     customerId: customer.email,
     claim,
     signals,

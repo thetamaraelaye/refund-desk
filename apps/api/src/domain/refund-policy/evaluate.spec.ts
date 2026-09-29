@@ -48,10 +48,12 @@ function input(
     signals?: Partial<RequestSignals>;
     order?: OrderFacts | null;
     recentRefundCount?: number;
+    automation?: Partial<PolicyInput['automation']>;
   } = {},
 ): PolicyInput {
   return {
     now: NOW,
+    automation: { refundsEnabled: true, remainingTodayMinor: 250_000, ...overrides.automation },
     customerId: 'cus_amara',
     claim: {
       orderNumber: 'ORD-1001',
@@ -422,6 +424,31 @@ describe('evaluateRefundPolicy', () => {
       expect(decision.outcome).toBe('ESCALATED');
       expect(decision.decisiveClause).toBe('§7');
       expect(decision.flags).toEqual(['HUMAN_REQUESTED']);
+    });
+  });
+
+  describe('§7 automatic refund limits', () => {
+    it('escalates everything approvable while automatic refunds are switched off', () => {
+      const decision = evaluateRefundPolicy(input({ automation: { refundsEnabled: false } }));
+
+      expect(decision.outcome).toBe('ESCALATED');
+      expect(decision.decisiveRule).toBe('automation-limit');
+    });
+
+    it("approves up to what is left of today's cap, and escalates beyond it", () => {
+      const withLeft = (remainingTodayMinor: number) =>
+        evaluateRefundPolicy(input({ automation: { remainingTodayMinor } })).outcome;
+
+      expect(withLeft(4800)).toBe('APPROVED');
+      expect(withLeft(4799)).toBe('ESCALATED');
+    });
+
+    it('does not turn a denial into an escalation', () => {
+      const decision = evaluateRefundPolicy(
+        input({ automation: { refundsEnabled: false }, claim: { reason: 'CHANGED_MIND' } }),
+      );
+
+      expect(decision.outcome).toBe('DENIED');
     });
   });
 

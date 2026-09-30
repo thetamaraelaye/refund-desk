@@ -60,6 +60,22 @@ export interface CustomerOrder {
   deliveredAt: string | null;
   cancelledAt: string | null;
   items: OrderItem[];
+  shipmentEvents: { status: string; occurredAt: string }[];
+}
+
+export interface Product {
+  sku: string;
+  name: string;
+  priceMinor: number;
+  currency: string;
+}
+
+export interface ConsoleMetrics {
+  needsAttention: number;
+  oldestWaitingSince: string | null;
+  approvedToday: number;
+  refundedTodayMinor: number;
+  currency: string;
 }
 
 export interface StaffListItem {
@@ -69,6 +85,8 @@ export interface StaffListItem {
   flags: string[];
   decisiveRule: string | null;
   summary: string | null;
+  reasonCategory: string | null;
+  orderItem: { name: string } | null;
   amountMinor: number | null;
   currency: string | null;
   createdAt: string;

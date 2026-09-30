@@ -1,11 +1,13 @@
 import type { ButtonHTMLAttributes } from 'react';
 import { cn } from './cn';
 
-type Variant = 'primary' | 'secondary' | 'ghost' | 'destructive';
+type Variant = 'primary' | 'brand' | 'secondary' | 'ghost' | 'destructive';
 type Size = 'sm' | 'md';
 
 const VARIANTS: Record<Variant, string> = {
   primary: 'bg-ink text-white hover:bg-ink-soft active:bg-ink',
+  // Larkfield's own actions in the store; the console stays on ink.
+  brand: 'bg-moss text-white hover:bg-moss-strong active:bg-moss',
   secondary: 'border border-line bg-surface text-ink hover:border-line-strong hover:bg-sunken',
   ghost: 'text-ink-soft hover:bg-sunken hover:text-ink',
   destructive: 'border border-denied/40 bg-surface text-denied hover:bg-denied-tint',

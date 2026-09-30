@@ -3,10 +3,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { request } from './api';
 import type {
+  ConsoleMetrics,
   CustomerOrder,
   CustomerRequest,
   DemoCustomer,
   Paged,
+  Product,
   RequestStatus,
   Sessions,
   StaffListItem,
@@ -29,7 +31,33 @@ export const keys = {
   request: (id: string) => ['request', id] as const,
   staffRequests: (filters: StaffListFilters) => ['staff-requests', filters] as const,
   staffRequest: (id: string) => ['staff-request', id] as const,
+  metrics: ['console-metrics'] as const,
+  products: ['store-products'] as const,
 };
+
+export const useProducts = () =>
+  useQuery({
+    queryKey: keys.products,
+    queryFn: () => request<Product[]>({ url: '/store/products' }),
+    staleTime: Infinity,
+  });
+
+// Refreshes with the queue, so the headline numbers never disagree with the list below them.
+export const useConsoleMetrics = () =>
+  useQuery({
+    queryKey: keys.metrics,
+    queryFn: () => request<ConsoleMetrics>({ url: '/admin/requests/metrics' }),
+    refetchInterval: 5_000,
+  });
+
+// Reviewer tool: restores the demo data. Everything cached is stale afterwards.
+export function useDemoReset() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => request({ method: 'POST', url: '/demo/reset' }),
+    onSuccess: () => queryClient.invalidateQueries(),
+  });
+}
 
 export const useSession = () =>
   useQuery({
@@ -174,7 +202,10 @@ export function useResolveRequest(id: string) {
       }),
     onSuccess: (detail) => {
       queryClient.setQueryData(keys.staffRequest(id), detail);
-      return queryClient.invalidateQueries({ queryKey: ['staff-requests'] });
+      return Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['staff-requests'] }),
+        queryClient.invalidateQueries({ queryKey: keys.metrics }),
+      ]);
     },
   });
 }

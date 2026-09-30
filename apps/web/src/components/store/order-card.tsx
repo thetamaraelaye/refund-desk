@@ -1,4 +1,5 @@
 import { ProductArt } from '@/components/product-art';
+import { cn } from '@/components/ui/cn';
 import { formatDay, formatMoney } from '@/lib/format';
 import type { CustomerOrder } from '@/lib/types';
 import { DeliveryTimeline } from './delivery-timeline';
@@ -8,21 +9,31 @@ import { DeliveryTimeline } from './delivery-timeline';
 export function OrderCard({
   order,
   onGetHelp,
+  justPlaced = false,
 }: {
   order: CustomerOrder;
   onGetHelp: (orderNumber: string, itemName: string) => void;
+  justPlaced?: boolean;
 }) {
   const total = order.items.reduce((sum, item) => sum + item.unitPriceMinor * item.quantity, 0);
   return (
     <article
       aria-labelledby={`order-${order.orderNumber}`}
-      className="rounded-[14px] border border-line bg-surface"
+      className={cn(
+        'rounded-[14px] border bg-surface',
+        justPlaced ? 'border-moss/60 ring-4 ring-moss-tint' : 'border-line',
+      )}
     >
       <header className="flex flex-wrap items-baseline gap-x-4 gap-y-1 border-b border-line px-5 py-4">
         <h3 id={`order-${order.orderNumber}`} className="text-[15px] font-semibold text-ink">
           {order.orderNumber}
         </h3>
         <p className="text-[13px] text-muted">Placed {formatDay(order.placedAt)}</p>
+        {justPlaced && (
+          <span className="rounded-full bg-moss-tint px-2 py-0.5 text-xs font-medium text-moss">
+            Just placed, test order
+          </span>
+        )}
         <p className="ml-auto text-[13px] text-ink-soft">
           Total <span className="font-medium text-ink">{formatMoney(total, order.currency)}</span>
         </p>

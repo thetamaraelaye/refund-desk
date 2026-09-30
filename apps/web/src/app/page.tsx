@@ -7,11 +7,13 @@ const FIRST_LOOK = 8;
 import { AppHeader, STORE_NAME } from '@/components/app-header';
 import { DemoDrawer } from '@/components/demo-drawer';
 import { ProductArt } from '@/components/product-art';
+import { TestOrderDialog } from '@/components/store/test-order-dialog';
 import { Button } from '@/components/ui/button';
 import { TextField } from '@/components/ui/field';
 import { ApiError } from '@/lib/api';
 import { formatMoney } from '@/lib/format';
 import { useCustomerSignIn, useDemoCustomers, useProducts, useSession } from '@/lib/queries';
+import type { Product } from '@/lib/types';
 
 // The hero's still life: one piece from each corner of the shop.
 const FEATURED = ['KIT-POUR-01', 'LGT-DESK-02', 'APP-COAT-MW', 'AUD-HEAD-02'];
@@ -23,6 +25,7 @@ export default function StoreHome() {
   const products = useProducts();
   const signedIn = Boolean(session.data?.customer);
   const [showAll, setShowAll] = useState(false);
+  const [ordering, setOrdering] = useState<Product | null>(null);
   const shown = showAll ? products.data : products.data?.slice(0, FIRST_LOOK);
 
   return (
@@ -119,6 +122,17 @@ export default function StoreHome() {
                   <p className="mt-0.5 text-[14px] text-muted">
                     {formatMoney(product.priceMinor, product.currency)}
                   </p>
+                  <button
+                    type="button"
+
+                    onClick={() => setOrdering(product)}
+
+                    aria-label={`Place a test order for the ${product.name}`}
+
+                    className="mt-2 rounded-button border border-line px-2.5 py-1 text-xs font-medium text-ink-soft hover:border-moss hover:text-moss"
+                  >
+                    Place a test order
+                  </button>
                 </li>
               ))}
             </ul>
@@ -162,6 +176,7 @@ export default function StoreHome() {
           </Link>
         </div>
       </footer>
+      <TestOrderDialog product={ordering} signedIn={signedIn} onClose={() => setOrdering(null)} />
       <DemoDrawer />
     </div>
   );

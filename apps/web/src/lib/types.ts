@@ -67,8 +67,11 @@ export interface Product {
   sku: string;
   name: string;
   priceMinor: number;
+  finalSale: boolean;
   currency: string;
 }
+
+export type TestDelivery = 'DELIVERED_TODAY' | 'DELIVERED_45_DAYS_AGO' | 'IN_TRANSIT';
 
 export interface ConsoleMetrics {
   needsAttention: number;

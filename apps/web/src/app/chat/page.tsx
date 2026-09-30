@@ -39,6 +39,7 @@ function Chat() {
   // The URL is the state: which request is open, and which demo scenario to prefill.
   const requestId = params.get('request');
   const scenarioKey = params.get('try');
+  const placed = params.get('placed');
 
   const session = useSession();
   const demoCustomers = useDemoCustomers();
@@ -122,7 +123,7 @@ function Chat() {
               Choose the item that needs attention, or just tell us what happened.
             </p>
           </div>
-          <OrdersPanel onGetHelp={getHelp} />
+          <OrdersPanel onGetHelp={getHelp} placed={placed} />
           <PastRequests activeId={requestId} />
         </div>
         <section
@@ -403,10 +404,17 @@ function Bubble({ role, body, at }: { role: ChatMessage['role']; body: string; a
 
 function OrdersPanel({
   onGetHelp,
+  placed,
 }: {
   onGetHelp: (orderNumber: string, itemName: string) => void;
+  // A test order placed from the shop: shown first, and marked.
+  placed: string | null;
 }) {
   const orders = useMyOrders();
+  const sorted = orders.data && [
+    ...orders.data.filter((order) => order.orderNumber === placed),
+    ...orders.data.filter((order) => order.orderNumber !== placed),
+  ];
   return (
     <section aria-label="Order history" className="flex flex-col gap-4">
       {orders.isPending && <LoadingState label="Loading your orders…" />}
@@ -417,8 +425,13 @@ function OrdersPanel({
           onRetry={() => void orders.refetch()}
         />
       )}
-      {orders.data?.map((order) => (
-        <OrderCard key={order.orderNumber} order={order} onGetHelp={onGetHelp} />
+      {sorted?.map((order) => (
+        <OrderCard
+          key={order.orderNumber}
+          order={order}
+          onGetHelp={onGetHelp}
+          justPlaced={order.orderNumber === placed}
+        />
       ))}
     </section>
   );

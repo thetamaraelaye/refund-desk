@@ -13,6 +13,7 @@ import type {
   Sessions,
   StaffListItem,
   StaffRequestDetail,
+  TestDelivery,
 } from './types';
 
 // The staff queue: one status, or the "needs attention" view (escalated and waiting, oldest first).
@@ -49,6 +50,16 @@ export const useConsoleMetrics = () =>
     queryFn: () => request<ConsoleMetrics>({ url: '/admin/requests/metrics' }),
     refetchInterval: 5_000,
   });
+
+// Demo shop: places a real order for the signed-in customer, ready to test the policy against.
+export function usePlaceTestOrder() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { skus: string[]; delivery: TestDelivery }) =>
+      request<{ orderNumber: string }>({ method: 'POST', url: '/store/orders', data: body }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: keys.myOrders }),
+  });
+}
 
 // Reviewer tool: restores the demo data. Everything cached is stale afterwards.
 export function useDemoReset() {

@@ -149,5 +149,30 @@ const marcus = customers.find((c) => c.email === 'marcus.webb@example.com');
 const marcusView = (await (await customerSession(marcus))('GET', `/requests/${tvId}`)).body.data;
 check('the customer sees the specialist’s message', marcusView.messages.at(-1).role === 'STAFF');
 
+console.log('\nDemo shop');
+const julia = customers.find((c) => c.email === 'julia.santos@example.com');
+const juliaCall = await customerSession(julia);
+async function tryTestOrder(delivery, message, expected) {
+  const placed = await juliaCall('POST', '/store/orders', { skus: ['KIT-KETL-01'], delivery });
+  const orderNumber = placed.body?.data?.orderNumber;
+  const reply = (
+    await juliaCall('POST', '/requests/messages', { message: message.replace('{order}', orderNumber) })
+  ).body.data;
+  check(`test order ${delivery.toLowerCase()} → ${expected}`, reply?.status === expected, `${placed.status} ${reply?.status}`);
+  return orderNumber;
+}
+const recent = await tryTestOrder('DELIVERED_TODAY', 'The kettle from {order} arrived cracked.', 'APPROVED');
+await tryTestOrder('DELIVERED_45_DAYS_AGO', 'The kettle from {order} arrived cracked.', 'DENIED');
+await tryTestOrder('IN_TRANSIT', 'My kettle from {order} never arrived.', 'ESCALATED');
+check(
+  'a price sent by the browser is rejected: prices come from the catalogue',
+  (await juliaCall('POST', '/store/orders', { skus: ['KIT-KETL-01'], delivery: 'IN_TRANSIT', priceMinor: 1 })).status === 400,
+);
+check('the demo reset removes test orders', await (async () => {
+  const reset = await anonymous('POST', '/demo/reset');
+  const orders = (await juliaCall('GET', '/me/orders')).body.data;
+  return reset.status === 204 && !orders.some((o) => o.orderNumber === recent);
+})());
+
 console.log(`\n${failures === 0 ? 'All checks passed.' : `${failures} check(s) failed.`}\n`);
 process.exit(failures === 0 ? 0 : 1);

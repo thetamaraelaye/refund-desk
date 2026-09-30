@@ -35,8 +35,8 @@ Then open **<http://localhost:3000>**.
 - **To use Claude**, copy `.env.example` to `.env`, set `ANTHROPIC_API_KEY`, then run
   `docker-compose up --build` again. The API logs which model it is using at startup.
 - **Support dashboard password:** `refund-desk-admin`. Set `ADMIN_PASSWORD` to change it.
-- **Reset the demo data** (clears requests, refunds made through the app, and audits; keeps
-  the catalogue): **Reset demo data** in the *Demo scenarios* drawer, or
+- **Reset the demo data** (clears requests, refunds made through the app, audits and test
+  orders; keeps the catalogue): **Reset demo data** in the *Demo scenarios* drawer, or
   `docker compose exec api node dist/database/seed.js --reset`. To wipe
   everything: `docker-compose down -v`.
 - **Fill the dashboard with example decisions:** `node apps/api/scripts/demo-history.mjs` sends
@@ -52,7 +52,9 @@ holds the reviewer shortcuts, kept apart from the product itself.
 
 1. **Look around the shop.** The home page is Larkfield's storefront: the collection, with a
    line drawing of every product. Signed in, *Your orders* shows each order's delivery timeline
-   and every item with **Get help with this item**.
+   and every item with **Get help with this item**. **Place a test order** on any product creates
+   a real order (with its charge and tracking) delivered today, 45 days ago, or still on its way,
+   so you can try the policy on fresh orders as often as you like.
 2. **Try a scenario.** Open *Demo scenarios* and pick one. It signs you in as that customer with
    the message ready to send. Or sign in with any demo account's email (listed under the
    sign-in form; there are no passwords) and start from **Get help with this item** next to an
@@ -113,7 +115,7 @@ Set these in a root `.env` file; `.env.example` documents each one.
 | `JWT_SECRET` | local-only value | Signs session cookies. The API won't start without 24+ characters; set your own for any deployment |
 | `ADMIN_PASSWORD` | `refund-desk-admin` | Support dashboard password |
 | `AUTO_REFUNDS_ENABLED` | `true` | Kill switch: `false` sends every would-be automatic approval to a person |
-| `DEMO_MODE` | `true` in Compose, `false` otherwise | Reviewer tools: the demo reset endpoint. Turn off for anything real |
+| `DEMO_MODE` | `true` in Compose, `false` otherwise | Reviewer tools: test orders and the demo reset. Turn off for anything real |
 | `WEB_PORT` / `API_PORT` / `DB_PORT` | `3000` / `4000` / `5433` | Ports on your machine |
 
 The API checks its whole configuration at startup, so a misconfigured deploy fails to start

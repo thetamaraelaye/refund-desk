@@ -149,6 +149,30 @@ test('shows what it is doing while it works on a reply', { tag: '@phone' }, asyn
   await expect(firstStep).toHaveCount(0);
 });
 
+test('a tester can place a test order in the shop and ask for help with it', async ({ page }) => {
+  await signInAs(page, 'ethan.brooks@example.com');
+  await page.goto('/');
+  await page.getByRole('button', { name: /^Show all \d+ pieces$/ }).click();
+  await page
+    .getByRole('button', { name: 'Place a test order for the Glass pour-over kettle' })
+    .click();
+  const dialog = page.getByRole('dialog', { name: 'Glass pour-over kettle' });
+  await dialog.getByLabel(/Delivered 45 days ago/).check();
+  await dialog.getByRole('button', { name: 'Place test order' }).click();
+
+  await expect(page).toHaveURL(/\/chat\?placed=ORD-\d+/);
+  const orderNumber = new URL(page.url()).searchParams.get('placed')!;
+  await expect(page.getByText('Just placed, test order')).toBeVisible();
+
+  await page
+    .getByRole('button', { name: `Get help with the Glass pour-over kettle from ${orderNumber}` })
+    .click();
+  await page.getByLabel('Your message', { exact: true }).pressSequentially('It arrived cracked.');
+  await page.getByRole('button', { name: 'Send' }).click();
+  await expect(badge(chatPanel(page), 'Not refunded')).toBeVisible();
+  await expect(chatPanel(page).getByText(/within 30 days of delivery/)).toBeVisible();
+});
+
 test('sends signed-out visitors to sign in', { tag: '@phone' }, async ({ page }) => {
   await page.goto('/chat');
   await expect(page).toHaveURL(/\/$/);

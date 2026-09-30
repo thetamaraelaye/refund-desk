@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import {
   badge,
   chatPanel,
@@ -8,6 +8,9 @@ import {
   STAFF_PASSWORD,
   STAFF_STATE,
 } from './helpers';
+
+// Tab buttons live in the status bar; cards are buttons too and their names start with a status.
+const tabs = (page: Page) => page.getByRole('navigation', { name: 'Requests by status' });
 
 test('a wrong password is refused inline', async ({ page }) => {
   await page.goto('/admin/sign-in');
@@ -35,10 +38,12 @@ test('a specialist approves an escalated refund and the customer is told', async
   const staffContext = await browser.newContext({ storageState: STAFF_STATE });
   const staff = await staffContext.newPage();
   await staff.goto('/admin');
-  await staff.getByRole('button', { name: /^Escalated/ }).click();
+  await tabs(staff)
+    .getByRole('button', { name: /^Escalated/ })
+    .click();
   await staff
-    .getByRole('row')
-    .filter({ hasText: new RegExp(`${reference}\\b`) })
+    .getByRole('region', { name: 'Request list' })
+    .getByRole('button', { name: new RegExp(`${reference}\\b`) })
     .click();
 
   // The receipt marks the rule that decided it.
@@ -87,8 +92,8 @@ test('requests open from the keyboard, and the dashboard has no serious accessib
   const staffContext = await browser.newContext({ storageState: STAFF_STATE });
   const staff = await staffContext.newPage();
   await staff.goto('/admin');
-  const firstRow = staff.locator('tbody tr').first();
-  await firstRow.focus();
+  const firstCard = staff.getByRole('region', { name: 'Request list' }).getByRole('button').first();
+  await firstCard.focus();
   await staff.keyboard.press('Enter');
   await expect(staff).toHaveURL(/request=/);
   await expect(staff.getByRole('heading', { name: 'How the policy decided' })).toBeVisible();
@@ -111,8 +116,8 @@ test('a specialist can rule on a request that is still waiting for the customer'
   const staff = await staffContext.newPage();
   await staff.goto('/admin?status=NEEDS_INFO');
   await staff
-    .getByRole('row')
-    .filter({ hasText: new RegExp(`${reference}\\b`) })
+    .getByRole('region', { name: 'Request list' })
+    .getByRole('button', { name: new RegExp(`${reference}\\b`) })
     .click();
   await expect(staff.getByText(/waiting for the customer to reply/)).toBeVisible();
 
@@ -137,7 +142,7 @@ test('the console has its own door, and opens on the requests that need a person
   const staffContext = await browser.newContext({ storageState: STAFF_STATE });
   const staff = await staffContext.newPage();
   await staff.goto('/admin');
-  await expect(staff.getByRole('button', { name: /^Needs attention/ })).toHaveAttribute(
+  await expect(tabs(staff).getByRole('button', { name: /^Needs attention/ })).toHaveAttribute(
     'aria-current',
     'page',
   );

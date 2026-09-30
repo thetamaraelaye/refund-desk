@@ -90,9 +90,12 @@ test('asks which item on a multi-item order, then approves the answer', async ({
 
   await expect(badge(chat, 'Refund approved')).toBeVisible();
   await expect(chat.getByText(/Your refund of \$42\.00 for the French press/)).toBeVisible();
-  const orders = page.getByRole('region', { name: 'Your orders' });
+  const orders = page.getByRole('region', { name: 'Order history' });
   await expect(
-    orders.getByRole('listitem').filter({ hasText: 'French press' }).getByText('Refunded'),
+    orders
+      .getByRole('listitem')
+      .filter({ hasText: 'French press' })
+      .getByText(/^Refunded/),
   ).toBeVisible();
   await expect(page.getByText('Your refund is on its way.')).toBeVisible();
 });

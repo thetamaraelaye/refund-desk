@@ -36,7 +36,8 @@ Then open **<http://localhost:3000>**.
   `docker-compose up --build` again. The API logs which model it is using at startup.
 - **Support dashboard password:** `refund-desk-admin`. Set `ADMIN_PASSWORD` to change it.
 - **Reset the demo data** (clears requests, refunds made through the app, and audits; keeps
-  the catalogue): `docker compose exec api node dist/database/seed.js --reset`. To wipe
+  the catalogue): **Reset demo data** in the *Demo scenarios* drawer, or
+  `docker compose exec api node dist/database/seed.js --reset`. To wipe
   everything: `docker-compose down -v`.
 - **Fill the dashboard with example decisions:** `node apps/api/scripts/demo-history.mjs` sends
   the demo scenarios through the running API as their customers. It skips the three that
@@ -49,20 +50,25 @@ customers (<http://localhost:3000>), and **Refund Desk**, the support console fo
 (<http://localhost:3000/admin>). A **Demo scenarios** button in the corner of the help centre
 holds the reviewer shortcuts, kept apart from the product itself.
 
-1. **Try a scenario.** Open *Demo scenarios* and pick one. It signs you in as that customer with
+1. **Look around the shop.** The home page is Larkfield's storefront: the collection, with a
+   line drawing of every product. Signed in, *Your orders* shows each order's delivery timeline
+   and every item with **Get help with this item**.
+2. **Try a scenario.** Open *Demo scenarios* and pick one. It signs you in as that customer with
    the message ready to send. Or sign in with any demo account's email (listed under the
    sign-in form; there are no passwords) and start from **Get help with this item** next to an
    item in your orders.
-2. **Send the message.** The assistant says it's an AI, shows each stage while it works (reading
+3. **Send the message.** The assistant says it's an AI, shows each stage while it works (reading
    the message, finding the order and payments, checking the policy, writing the reply), and
    "Talk to a person" stays visible throughout. If it's clear which order you mean, you don't
    need the order number.
-3. **Open the support console** at `/admin` (password `refund-desk-admin`). It opens on
-   **Needs attention**: escalated and waiting requests, longest waiting first. Open a request to
+4. **Open the support console** at `/admin` (password `refund-desk-admin`). A strip of headline
+   numbers (needs attention, oldest waiting, refunds approved and refunded today) sits above
+   Linear-style request cards, one tab per status. It opens on **Needs attention**: escalated
+   and waiting requests, grouped by status, longest waiting first. Open a request to
    see the **decision receipt**: every rule the policy ran, in order, with the facts behind it
    and the deciding line marked. Next to it are the order's payment ledger and carrier tracking,
    and the full audit trail, including what the model read.
-4. **Rule on a request.** Approve or deny an escalated or waiting request with a note. The refund
+5. **Rule on a request.** Approve or deny an escalated or waiting request with a note. The refund
    amount comes from the order, and a specialist can't type one. The customer's chat updates on
    its own.
 
@@ -107,6 +113,7 @@ Set these in a root `.env` file; `.env.example` documents each one.
 | `JWT_SECRET` | local-only value | Signs session cookies. The API won't start without 24+ characters; set your own for any deployment |
 | `ADMIN_PASSWORD` | `refund-desk-admin` | Support dashboard password |
 | `AUTO_REFUNDS_ENABLED` | `true` | Kill switch: `false` sends every would-be automatic approval to a person |
+| `DEMO_MODE` | `true` in Compose, `false` otherwise | Reviewer tools: the demo reset endpoint. Turn off for anything real |
 | `WEB_PORT` / `API_PORT` / `DB_PORT` | `3000` / `4000` / `5433` | Ports on your machine |
 
 The API checks its whole configuration at startup, so a misconfigured deploy fails to start

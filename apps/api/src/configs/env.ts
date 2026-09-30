@@ -26,6 +26,11 @@ const EnvSchema = z.object({
   JWT_SECRET: z.string().min(24, 'must be at least 24 characters'),
   // The support dashboard's shared password (demo scope; a real deployment uses SSO).
   ADMIN_PASSWORD: z.string().min(8, 'must be at least 8 characters'),
+  // Demo tools (reset the data, place test orders). Off by default; docker-compose turns it on.
+  DEMO_MODE: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((flag) => flag === 'true'),
   // Kill switch for money leaving without a person: false escalates every would-be approval.
   AUTO_REFUNDS_ENABLED: z
     .enum(['true', 'false'])

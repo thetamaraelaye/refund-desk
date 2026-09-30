@@ -36,6 +36,10 @@ export class CustomersService {
           },
           orderBy: { sku: 'asc' },
         },
+        shipmentEvents: {
+          select: { status: true, occurredAt: true },
+          orderBy: { occurredAt: 'asc' },
+        },
       },
       orderBy: { placedAt: 'desc' },
     });

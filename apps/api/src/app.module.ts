@@ -9,6 +9,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { CustomersModule } from './modules/customers/customers.module';
 import { HealthModule } from './modules/health/health.module';
 import { RequestsModule } from './modules/requests/requests.module';
+import { StoreModule } from './modules/store/store.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { RequestsModule } from './modules/requests/requests.module';
     CustomersModule,
     AuthModule,
     RequestsModule,
+    StoreModule,
   ],
   providers: [
     // Order matters: throttle first, then require a session.

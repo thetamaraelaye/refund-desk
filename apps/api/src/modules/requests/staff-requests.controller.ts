@@ -16,6 +16,12 @@ export class StaffRequestsController {
     return this.requests.list(query);
   }
 
+  @Get('metrics')
+  @ApiOperation({ summary: "Headline numbers: open queue, oldest wait, today's approvals" })
+  metrics() {
+    return this.requests.metrics();
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'A request with its conversation, order history and full audit trail' })
   detail(@Param('id') id: string) {

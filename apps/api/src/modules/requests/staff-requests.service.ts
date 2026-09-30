@@ -12,6 +12,7 @@ import type { ListRequestsQuery, ResolveRequestDto } from './dto/requests.dto';
 import { isUniqueViolation, issueRefund } from './refund-ledger';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+const STORE_CURRENCY = 'USD';
 
 // Open requests a specialist can rule on; approved and denied ones are final.
 const RESOLVABLE: ReadonlySet<RequestStatus> = new Set([
@@ -26,6 +27,8 @@ const LIST_SELECT = {
   flags: true,
   decisiveRule: true,
   summary: true,
+  reasonCategory: true,
+  orderItem: { select: { name: true } },
   amountMinor: true,
   currency: true,
   createdAt: true,
@@ -164,6 +167,37 @@ export class StaffRequestsService {
         totalPages: Math.max(1, Math.ceil(total / query.limit)),
         counts,
       },
+    };
+  }
+
+  // The console's headline numbers. Today is the UTC day; money is the store currency (D13).
+  async metrics() {
+    const now = new Date();
+    const midnight = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    const open = { status: { in: [...RESOLVABLE] } };
+    const [needsAttention, oldest, today] = await Promise.all([
+      this.prisma.refundRequest.count({ where: open }),
+      this.prisma.refundRequest.findFirst({
+        where: open,
+        orderBy: { createdAt: 'asc' },
+        select: { createdAt: true },
+      }),
+      this.prisma.refund.aggregate({
+        where: {
+          issuedAt: { gte: midnight },
+          source: { in: [RefundSource.AUTOMATED, RefundSource.AGENT] },
+          currency: STORE_CURRENCY,
+        },
+        _count: { _all: true },
+        _sum: { amountMinor: true },
+      }),
+    ]);
+    return {
+      needsAttention,
+      oldestWaitingSince: oldest?.createdAt ?? null,
+      approvedToday: today._count._all,
+      refundedTodayMinor: today._sum.amountMinor ?? 0,
+      currency: STORE_CURRENCY,
     };
   }
 

@@ -10,6 +10,7 @@ import {
 } from './seed-data';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+const SEED_ORDER_NUMBERS = SEED_CUSTOMERS.flatMap((c) => c.orders.map((o) => o.orderNumber));
 
 // Idempotent: runs on every container start and re-anchors dates, without touching reviewer data.
 // --reset (or the demo reset endpoint) also clears requests, app-issued refunds and audits.
@@ -26,6 +27,11 @@ export async function runSeed(tx: Prisma.TransactionClient, reset: boolean) {
     });
     await tx.refund.deleteMany();
     await tx.refundRequest.deleteMany();
+    // Test orders placed from the demo shop, with their items and tracking.
+    const testOrders = { orderNumber: { notIn: SEED_ORDER_NUMBERS } };
+    await tx.shipmentEvent.deleteMany({ where: { order: testOrders } });
+    await tx.orderItem.deleteMany({ where: { order: testOrders } });
+    await tx.order.deleteMany({ where: testOrders });
   }
 
   for (const [customerIndex, seedCustomer] of SEED_CUSTOMERS.entries()) {

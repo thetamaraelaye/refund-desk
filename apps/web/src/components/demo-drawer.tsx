@@ -4,7 +4,7 @@ import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from '@headlessui/re
 import Link from 'next/link';
 import { useState } from 'react';
 import { ApiError } from '@/lib/api';
-import { useCustomerSignIn, useDemoCustomers } from '@/lib/queries';
+import { useCustomerSignIn, useDemoCustomers, useDemoReset } from '@/lib/queries';
 import type { DemoCustomer } from '@/lib/types';
 import { Button } from './ui/button';
 import { ErrorState, LoadingState } from './ui/states';
@@ -71,6 +71,7 @@ export function DemoDrawer() {
                 </Link>
                 , password <span className="font-mono text-xs">refund-desk-admin</span>
               </p>
+              <ResetDemoData />
             </div>
 
             {signIn.isError && (
@@ -122,5 +123,61 @@ export function DemoDrawer() {
         </div>
       </Dialog>
     </>
+  );
+}
+
+// Restores every order and payment to the seeded demo and clears all requests, so every scenario can be
+// tried again. Asks once before wiping anything.
+function ResetDemoData() {
+  const reset = useDemoReset();
+  const [confirming, setConfirming] = useState(false);
+
+  if (reset.isSuccess && !confirming) {
+    return (
+      <p role="status" className="mt-3 text-[13px] text-approved">
+        Demo data restored. Every scenario is ready to try again.
+      </p>
+    );
+  }
+  return (
+    <div className="mt-3 rounded-input border border-dashed border-line-strong p-3 text-[13px]">
+      {confirming ? (
+        <>
+          <p className="text-ink-soft">
+            This clears every request, refund and audit made in the demo and restores the original
+            orders.
+          </p>
+          <div className="mt-2 flex gap-2">
+            <Button
+              variant="destructive"
+              size="sm"
+              isLoading={reset.isPending}
+              onClick={() => reset.mutate(undefined, { onSuccess: () => setConfirming(false) })}
+            >
+              Reset now
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setConfirming(false)}>
+              Cancel
+            </Button>
+          </div>
+          {reset.isError && (
+            <p role="alert" className="mt-2 text-denied">
+              {reset.error instanceof ApiError && reset.error.status === 404
+                ? 'Demo tools are switched off on this server (DEMO_MODE).'
+                : reset.error.message}
+            </p>
+          )}
+        </>
+      ) : (
+        <div className="flex items-center gap-3">
+          <p className="flex-1 text-ink-soft">
+            Used up the scenarios? Start again from fresh orders.
+          </p>
+          <Button variant="secondary" size="sm" onClick={() => setConfirming(true)}>
+            Reset demo data
+          </Button>
+        </div>
+      )}
+    </div>
   );
 }

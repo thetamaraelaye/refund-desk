@@ -5,12 +5,13 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { AppHeader } from '@/components/app-header';
 import { DemoDrawer } from '@/components/demo-drawer';
+import { OrderCard } from '@/components/store/order-card';
 import { Button, Spinner } from '@/components/ui/button';
 import { cn } from '@/components/ui/cn';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { ApiError } from '@/lib/api';
-import { formatDay, formatMoney, formatRelative } from '@/lib/format';
+import { formatRelative } from '@/lib/format';
 import {
   useCustomerRequest,
   useDemoCustomers,
@@ -20,7 +21,7 @@ import {
   useSendMessage,
   useSession,
 } from '@/lib/queries';
-import type { ChatMessage, CustomerOrder, CustomerRequest } from '@/lib/types';
+import type { ChatMessage, CustomerRequest } from '@/lib/types';
 
 export default function ChatPage() {
   return (
@@ -111,17 +112,29 @@ function Chat() {
   return (
     <div className="flex min-h-dvh flex-col">
       <AppHeader brand="store" person={session.data?.customer?.name} />
-      <main className="mx-auto grid w-full max-w-[1200px] flex-1 gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <main className="mx-auto grid w-full max-w-7xl flex-1 gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[minmax(0,1fr)_440px]">
+        <div className="flex min-w-0 flex-col gap-6">
+          <div>
+            <h1 className="font-display text-[34px] leading-tight font-medium tracking-tight text-ink">
+              Your orders
+            </h1>
+            <p className="mt-1 text-[15px] text-ink-soft">
+              Choose the item that needs attention, or just tell us what happened.
+            </p>
+          </div>
+          <OrdersPanel onGetHelp={getHelp} />
+          <PastRequests activeId={requestId} />
+        </div>
         <section
           aria-labelledby="chat-heading"
-          className="flex min-h-[70dvh] flex-col rounded-panel border border-line bg-surface"
+          className="flex min-h-[70dvh] flex-col rounded-[14px] border border-line bg-surface lg:sticky lg:top-6 lg:h-[calc(100dvh-10rem)] lg:min-h-0 lg:self-start"
         >
           <div className="flex flex-wrap items-center gap-3 border-b border-line px-5 py-3.5">
             <div className="min-w-0">
-              <h1 id="chat-heading" className="text-[15px] font-semibold text-ink">
+              <h2 id="chat-heading" className="text-[15px] font-semibold text-ink">
                 {request ? `Request #${request.reference}` : 'New request'}
-              </h1>
-              <p className="text-[13px] text-muted">Refund Desk assistant</p>
+              </h2>
+              <p className="text-[13px] text-muted">Larkfield help</p>
             </div>
             <div className="ml-auto flex items-center gap-2">
               {request && <StatusBadge status={request.status} audience="customer" />}
@@ -231,11 +244,6 @@ function Chat() {
             )}
           </div>
         </section>
-
-        <aside className="flex flex-col gap-6" aria-label="Your orders and requests">
-          <OrdersPanel onGetHelp={getHelp} />
-          <PastRequests activeId={requestId} />
-        </aside>
       </main>
       <DemoDrawer />
     </div>
@@ -271,7 +279,13 @@ function Conversation({
 
   const messages = request?.messages ?? [];
   return (
-    <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-5 py-5" aria-live="polite">
+    <div
+      // A labelled, focusable log: keyboard users can scroll it, and new messages are announced.
+      role="log"
+      aria-label="Conversation"
+      tabIndex={0}
+      className="flex flex-1 flex-col gap-4 overflow-y-auto px-5 py-5"
+    >
       {messages.length === 0 && !pendingText && (
         <div className="max-w-md py-6">
           <p className="text-[15px] font-medium text-ink">How can we help?</p>
@@ -387,13 +401,6 @@ function Bubble({ role, body, at }: { role: ChatMessage['role']; body: string; a
   );
 }
 
-const ORDER_STATUS: Record<CustomerOrder['status'], string> = {
-  PROCESSING: 'Processing',
-  SHIPPED: 'On its way',
-  DELIVERED: 'Delivered',
-  CANCELLED: 'Cancelled',
-};
-
 function OrdersPanel({
   onGetHelp,
 }: {
@@ -401,17 +408,8 @@ function OrdersPanel({
 }) {
   const orders = useMyOrders();
   return (
-    <section
-      aria-labelledby="orders-heading"
-      className="rounded-panel border border-line bg-surface"
-    >
-      <h2
-        id="orders-heading"
-        className="border-b border-line px-4 py-3 text-sm font-semibold text-ink"
-      >
-        Your orders
-      </h2>
-      {orders.isPending && <LoadingState label="Loading orders…" />}
+    <section aria-label="Order history" className="flex flex-col gap-4">
+      {orders.isPending && <LoadingState label="Loading your orders…" />}
       {orders.isError && (
         <ErrorState
           title="Couldn't load your orders"
@@ -419,51 +417,9 @@ function OrdersPanel({
           onRetry={() => void orders.refetch()}
         />
       )}
-      <ul className="divide-y divide-line">
-        {orders.data?.map((order) => {
-          const when =
-            order.status === 'DELIVERED' && order.deliveredAt
-              ? `Delivered ${formatDay(order.deliveredAt)}`
-              : order.status === 'CANCELLED' && order.cancelledAt
-                ? `Cancelled ${formatDay(order.cancelledAt)}`
-                : `${ORDER_STATUS[order.status]}, ordered ${formatDay(order.placedAt)}`;
-          return (
-            <li key={order.orderNumber} className="px-4 py-3">
-              <p className="text-sm font-semibold text-ink">{order.orderNumber}</p>
-              <p className="text-xs text-muted">{when}</p>
-              <ul className="mt-2 flex flex-col gap-2">
-                {order.items.map((item) => (
-                  <li
-                    key={item.sku}
-                    className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-[13px] text-ink-soft"
-                  >
-                    <span className="min-w-0 flex-1">
-                      {item.name}
-                      {item.finalSale && (
-                        <span className="ml-1.5 text-xs text-escalated">Final sale</span>
-                      )}
-                      {item.refund && (
-                        <span className="ml-1.5 text-xs text-approved">Refunded</span>
-                      )}
-                    </span>
-                    <span className="tabular-nums">
-                      {formatMoney(item.unitPriceMinor * item.quantity, order.currency)}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => onGetHelp(order.orderNumber, item.name)}
-                      aria-label={`Get help with the ${item.name} from ${order.orderNumber}`}
-                      className="w-full rounded-button border border-line px-2 py-1 text-left text-xs font-medium text-ink hover:border-line-strong hover:bg-sunken"
-                    >
-                      Get help with this item
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </li>
-          );
-        })}
-      </ul>
+      {orders.data?.map((order) => (
+        <OrderCard key={order.orderNumber} order={order} onGetHelp={onGetHelp} />
+      ))}
     </section>
   );
 }

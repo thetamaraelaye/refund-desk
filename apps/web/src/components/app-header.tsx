@@ -9,7 +9,7 @@ import { Button } from './ui/button';
 export const STORE_NAME = 'Larkfield';
 
 const BRANDS = {
-  store: { name: STORE_NAME, area: 'Help centre', home: '/' },
+  store: { name: STORE_NAME, area: '', home: '/' },
   console: { name: 'Refund Desk', area: 'Support console', home: '/admin' },
 } as const;
 
@@ -28,7 +28,7 @@ export function AppHeader({
 
   return (
     <header className="border-b border-line bg-surface">
-      <div className="mx-auto flex h-14 max-w-[1440px] items-center gap-4 px-4 sm:px-6">
+      <div className="mx-auto flex h-14 max-w-360 items-center gap-4 px-4 sm:px-6">
         <Link href={home} className="flex items-center gap-2.5 rounded-button">
           {brand === 'store' ? (
             <span
@@ -46,7 +46,7 @@ export function AppHeader({
             </span>
           )}
           <span className="text-[15px] font-semibold tracking-tight text-ink">{name}</span>
-          <span className="hidden text-[13px] text-muted sm:inline">{area}</span>
+          {area && <span className="hidden text-[13px] text-muted sm:inline">{area}</span>}
         </Link>
         <div className="ml-auto flex items-center gap-2">
           {aside}
@@ -60,7 +60,6 @@ export function AppHeader({
                 onClick={() =>
                   signOut.mutate(undefined, {
                     onSuccess: () =>
-                       
                       window.location.assign(brand === 'store' ? '/' : '/admin/sign-in'),
                   })
                 }

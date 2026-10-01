@@ -51,25 +51,27 @@ test('a specialist approves an escalated refund and the customer is told', async
   await expect(receipt.locator('li[aria-current="true"]')).toContainText('§3');
   await expect(receipt.locator('li[aria-current="true"]')).toContainText('over $500.00');
 
-  // A note is required before a ruling.
-  await staff.getByRole('button', { name: 'Approve refund of $650.00' }).click();
-  await expect(staff.getByText('Add a short note for the audit trail.')).toBeVisible();
-
-  await staff
-    .getByLabel('Note for the audit trail')
-    .fill('Photos of the cracked screen check out.');
-  await staff.getByRole('button', { name: 'Approve refund of $650.00' }).click();
+  // Approve sits in the detail's header. The dialog states the amount and requires a note.
+  const approveInHeader = staff
+    .getByRole('region', { name: 'Request detail' })
+    .getByRole('button', { name: 'Approve refund of $650.00' });
+  await approveInHeader.click();
   // Headless UI puts role="dialog" on a zero-size wrapper, so check what the specialist actually sees.
-  const dialog = staff.getByRole('dialog', { name: 'Refund $650.00?' });
-  const dialogTitle = dialog.getByRole('heading', { name: 'Refund $650.00?' });
+  const dialog = staff.getByRole('dialog', { name: 'Approve a refund of $650.00?' });
+  const dialogTitle = dialog.getByRole('heading', { name: 'Approve a refund of $650.00?' });
   await expect(dialogTitle).toBeVisible();
+  await dialog.getByRole('button', { name: 'Approve refund of $650.00' }).click();
+  await expect(dialog.getByText('Add a short note for the audit trail.')).toBeVisible();
 
   // Escape backs out without recording anything.
   await staff.keyboard.press('Escape');
   await expect(dialogTitle).toBeHidden();
 
-  await staff.getByRole('button', { name: 'Approve refund of $650.00' }).click();
-  await dialog.getByRole('button', { name: 'Refund $650.00' }).click();
+  await approveInHeader.click();
+  await dialog
+    .getByLabel('Note for the audit trail')
+    .fill('Photos of the cracked screen check out.');
+  await dialog.getByRole('button', { name: 'Approve refund of $650.00' }).click();
   await expect(staff.getByText(/Ada Obi\s+approved this on/)).toBeVisible();
   await expect(staff.getByText('Refunded to Amex •••• 0005')).toBeVisible();
 
@@ -121,9 +123,12 @@ test('a specialist can rule on a request that is still waiting for the customer'
     .click();
   await expect(staff.getByText(/waiting for the customer to reply/)).toBeVisible();
 
-  await staff.getByLabel('Note for the audit trail').fill('No reply from the customer.');
-  await staff.getByRole('button', { name: 'Deny request' }).click();
-  const dialog = staff.getByRole('dialog', { name: 'Deny this request?' });
+  await staff
+    .getByRole('region', { name: 'Request detail' })
+    .getByRole('button', { name: 'Deny', exact: true })
+    .click();
+  const dialog = staff.getByRole('dialog', { name: `Deny request ${reference}?` });
+  await dialog.getByLabel('Note for the audit trail').fill('No reply from the customer.');
   await dialog.getByRole('button', { name: 'Deny request' }).click();
   await expect(staff.getByText(/Ada Obi\s+denied this on/)).toBeVisible();
 
@@ -146,5 +151,28 @@ test('the console has its own door, and opens on the requests that need a person
     'aria-current',
     'page',
   );
+  await staffContext.close();
+});
+
+test('a specialist can approve straight from a card in the queue', async ({ page, browser }) => {
+  await startScenario(page, 'Damaged final-sale item');
+  await send(page);
+  const chat = chatPanel(page);
+  await expect(badge(chat, 'With our support team')).toBeVisible();
+  const reference = (await chat.getByRole('heading').first().innerText()).replace('Request #', '');
+
+  const staffContext = await browser.newContext({ storageState: STAFF_STATE });
+  const staff = await staffContext.newPage();
+  await staff.goto('/admin');
+  await staff.getByRole('button', { name: `Approve refund for request ${reference}` }).click();
+  const dialog = staff.getByRole('dialog', { name: 'Approve a refund of $65.00?' });
+  await dialog.getByLabel('Note for the audit trail').fill('Tear visible in the photos.');
+  await dialog.getByRole('button', { name: 'Approve refund of $65.00' }).click();
+
+  // It leaves the queue, and the customer is told.
+  await expect(
+    staff.getByRole('button', { name: `Approve refund for request ${reference}` }),
+  ).toHaveCount(0);
+  await expect(badge(chat, 'Refund approved')).toBeVisible({ timeout: 20_000 });
   await staffContext.close();
 });

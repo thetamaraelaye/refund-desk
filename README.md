@@ -70,9 +70,10 @@ holds the reviewer shortcuts, kept apart from the product itself.
    see the **decision receipt**: every rule the policy ran, in order, with the facts behind it
    and the deciding line marked. Next to it are the order's payment ledger and carrier tracking,
    and the full audit trail, including what the model read.
-5. **Rule on a request.** Approve or deny an escalated or waiting request with a note. The refund
-   amount comes from the order, and a specialist can't type one. The customer's chat updates on
-   its own.
+5. **Rule on a request.** Approve straight from a card in the queue, or from the request's
+   header, where you can also deny. Either way a dialog states the amount and the item, and asks
+   for a note for the audit trail. The refund amount comes from the order, and a specialist can't
+   type one. The customer's chat updates on its own.
 
 The brief's six cases come first in *Demo scenarios*:
 

@@ -2,10 +2,11 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { Suspense } from 'react';
+import { Suspense, useState } from 'react';
 import { AppHeader } from '@/components/app-header';
 import { MetricsStrip } from '@/components/console/metrics-strip';
 import { RequestCard, StatusIcon } from '@/components/console/request-card';
+import { RulingDialog, type Ruling } from '@/components/console/ruling-dialog';
 import { RequestDetail } from '@/components/request-detail';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/components/ui/cn';
@@ -54,6 +55,7 @@ function Console() {
 
   const session = useSession();
   const metrics = useConsoleMetrics();
+  const [ruling, setRuling] = useState<Ruling | null>(null);
   const list = useStaffRequests({
     status,
     view: tab === 'attention' ? 'attention' : undefined,
@@ -90,6 +92,24 @@ function Console() {
         request={request}
         selected={request.id === selectedId}
         onOpen={() => navigate({ request: request.id })}
+        onApprove={
+          (request.status === 'ESCALATED' || request.status === 'NEEDS_INFO') &&
+          request.orderItem &&
+          request.amountMinor !== null
+            ? () =>
+                setRuling({
+                  action: 'APPROVE',
+                  target: {
+                    id: request.id,
+                    reference: request.reference,
+                    customerName: request.customer.name,
+                    itemName: request.orderItem?.name ?? null,
+                    amountMinor: request.amountMinor,
+                    currency: request.currency,
+                  },
+                })
+            : undefined
+        }
       />
     </li>
   );
@@ -162,7 +182,7 @@ function Console() {
         </nav>
       </div>
 
-      <main className="mx-auto grid w-full max-w-360 flex-1 gap-6 px-4 py-5 sm:px-6 lg:grid-cols-[minmax(380px,520px)_minmax(0,1fr)]">
+      <main className="mx-auto grid w-full max-w-360 flex-1 gap-6 px-4 py-5 sm:px-6 lg:grid-cols-[minmax(400px,580px)_minmax(0,1fr)]">
         <section
           aria-label="Request list"
           // While a new tab loads, the previous cards stay visible but dimmed and marked busy.
@@ -263,6 +283,7 @@ function Console() {
           )}
         </section>
       </main>
+      <RulingDialog ruling={ruling} onClose={() => setRuling(null)} />
     </div>
   );
 }

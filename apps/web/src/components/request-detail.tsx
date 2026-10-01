@@ -1,21 +1,26 @@
 'use client';
 
 import { useState } from 'react';
+import {
+  RulingDialog,
+  refundAmount,
+  type Ruling,
+  type RulingTarget,
+} from '@/components/console/ruling-dialog';
 import { DecisionReceipt } from '@/components/decision-receipt';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/components/ui/cn';
-import { ConfirmDialog } from '@/components/ui/confirm-dialog';
-import { TextArea } from '@/components/ui/field';
 import { ErrorState, LoadingState } from '@/components/ui/states';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { ApiError } from '@/lib/api';
 import { formatDateTime, formatDay, formatMoney, formatRelative } from '@/lib/format';
 import { AUDIT_KIND_LABELS, FLAG_LABELS, REASON_LABELS } from '@/lib/labels';
-import { useResolveRequest, useStaffRequest } from '@/lib/queries';
+import { useStaffRequest } from '@/lib/queries';
 import type { StaffRequestDetail } from '@/lib/types';
 
 export function RequestDetail({ id, onBack }: { id: string; onBack: () => void }) {
   const detail = useStaffRequest(id);
+  const [ruling, setRuling] = useState<Ruling | null>(null);
 
   if (detail.isPending) {
     return (
@@ -38,6 +43,16 @@ export function RequestDetail({ id, onBack }: { id: string; onBack: () => void }
   }
 
   const request = detail.data;
+  const open = request.status === 'ESCALATED' || request.status === 'NEEDS_INFO';
+  const target: RulingTarget = {
+    id: request.id,
+    reference: request.reference,
+    customerName: request.customer.name,
+    itemName: request.orderItem?.name ?? null,
+    amountMinor: request.amountMinor,
+    currency: request.currency,
+  };
+  const amount = refundAmount(target);
   // The decision the engine made; a specialist's ruling (if any) is listed in the audit trail.
   const decision = [...request.audits].reverse().find((audit) => audit.ruleTrace);
 
@@ -60,6 +75,28 @@ export function RequestDetail({ id, onBack }: { id: string; onBack: () => void }
           </div>
           <StatusBadge status={request.status} className="h-7 px-3 text-[13px]" />
         </div>
+        {open && (
+          <div className="flex flex-wrap items-center gap-2 border-t border-line bg-paper/60 px-5 py-3">
+            {amount ? (
+              <Button onClick={() => setRuling({ target, action: 'APPROVE' })}>
+                Approve refund of {amount}
+              </Button>
+            ) : (
+              <p className="text-[13px] text-muted">
+                No item was identified, so this request can only be denied.
+              </p>
+            )}
+            <Button variant="destructive" onClick={() => setRuling({ target, action: 'DENY' })}>
+              Deny
+            </Button>
+            {request.status === 'NEEDS_INFO' && (
+              <p className="w-full text-[13px] text-ink-soft">
+                The assistant is waiting for the customer to reply. You can rule now, for example if
+                they have gone quiet or you can see the answer in their order history.
+              </p>
+            )}
+          </div>
+        )}
         <dl className="grid gap-x-6 gap-y-3 border-t border-line p-5 text-[13px] sm:grid-cols-2 xl:grid-cols-4">
           <Fact label="Order" value={request.order?.orderNumber ?? 'Not identified'} />
           <Fact label="Item" value={request.orderItem?.name ?? 'Not identified'} />
@@ -100,9 +137,6 @@ export function RequestDetail({ id, onBack }: { id: string; onBack: () => void }
         )}
       </Panel>
 
-      {(request.status === 'ESCALATED' || request.status === 'NEEDS_INFO') && (
-        <Resolution request={request} />
-      )}
       {request.resolvedByName && request.resolvedAt && (
         <Panel className="p-5 text-[13px]">
           <p className="text-ink">
@@ -133,6 +167,7 @@ export function RequestDetail({ id, onBack }: { id: string; onBack: () => void }
 
       <Transcript request={request} />
       <AuditTrail request={request} />
+      <RulingDialog ruling={ruling} onClose={() => setRuling(null)} />
     </div>
   );
 }
@@ -149,97 +184,6 @@ function Fact({ label, value }: { label: string; value: string }) {
       <dt className="text-xs text-muted">{label}</dt>
       <dd className="mt-0.5 truncate font-medium text-ink">{value}</dd>
     </div>
-  );
-}
-
-function Resolution({ request }: { request: StaffRequestDetail }) {
-  const resolve = useResolveRequest(request.id);
-  const [note, setNote] = useState('');
-  const [touched, setTouched] = useState(false);
-  const [confirming, setConfirming] = useState<'APPROVE' | 'DENY' | null>(null);
-
-  const noteError =
-    touched && note.trim().length < 3 ? 'Add a short note for the audit trail.' : null;
-  const refundable = request.amountMinor !== null && request.currency && request.orderItem;
-  const amount = refundable ? formatMoney(request.amountMinor!, request.currency!) : null;
-
-  const ask = (action: 'APPROVE' | 'DENY') => {
-    setTouched(true);
-    if (note.trim().length < 3) return;
-    resolve.reset();
-    setConfirming(action);
-  };
-
-  const confirm = () => {
-    if (!confirming) return;
-    resolve.mutate(
-      { action: confirming, note: note.trim() },
-      { onSuccess: () => setConfirming(null) },
-    );
-  };
-
-  return (
-    <Panel
-      className={cn(
-        'p-5',
-        request.status === 'ESCALATED' ? 'border-escalated/40' : 'border-waiting/40',
-      )}
-    >
-      <h3 className="text-sm font-semibold text-ink">Your ruling</h3>
-      {request.status === 'NEEDS_INFO' && (
-        <p className="mt-1 text-[13px] text-ink-soft">
-          The assistant is waiting for the customer to reply. You can rule now, for example if they
-          have gone quiet or you can see the answer in their order history.
-        </p>
-      )}
-      <p className="mt-1 text-[13px] text-muted">
-        {refundable
-          ? `Approving refunds ${amount} for the ${request.orderItem!.name}, the price on the order. The customer is told either way.`
-          : 'No item was identified, so this request can only be denied. The customer can start a new request with the details.'}
-      </p>
-      <div className="mt-4">
-        <TextArea
-          label="Note for the audit trail"
-          hint="Not sent to the customer."
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          maxLength={500}
-          error={noteError}
-          rows={2}
-        />
-      </div>
-      <div className="mt-4 flex flex-wrap gap-2">
-        {refundable && <Button onClick={() => ask('APPROVE')}>Approve refund of {amount}</Button>}
-        <Button variant="destructive" onClick={() => ask('DENY')}>
-          Deny request
-        </Button>
-      </div>
-
-      <ConfirmDialog
-        open={confirming !== null}
-        title={confirming === 'APPROVE' ? `Refund ${amount}?` : 'Deny this request?'}
-        description={
-          confirming === 'APPROVE' ? (
-            <>
-              {amount} goes back to {request.customer.name}&rsquo;s card for the{' '}
-              {request.orderItem?.name}. This is recorded under your name and can&rsquo;t be undone
-              here.
-            </>
-          ) : (
-            <>
-              {request.customer.name} is told a refund can&rsquo;t be approved. Your note stays on
-              the audit trail.
-            </>
-          )
-        }
-        confirmLabel={confirming === 'APPROVE' ? `Refund ${amount}` : 'Deny request'}
-        tone={confirming === 'DENY' ? 'destructive' : 'primary'}
-        isLoading={resolve.isPending}
-        error={resolve.error?.message ?? null}
-        onConfirm={confirm}
-        onClose={() => setConfirming(null)}
-      />
-    </Panel>
   );
 }
 

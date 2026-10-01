@@ -89,10 +89,13 @@ export function RequestCard({
   request,
   selected,
   onOpen,
+  onApprove,
 }: {
   request: StaffListItem;
   selected: boolean;
   onOpen: () => void;
+  // Present for open requests with an identified item: approve straight from the list.
+  onApprove?: () => void;
 }) {
   const facts = [
     request.customer.name,
@@ -102,54 +105,70 @@ export function RequestCard({
   ].filter((fact): fact is string => Boolean(fact));
 
   return (
-    <button
-      type="button"
-      onClick={onOpen}
-      aria-current={selected ? 'true' : undefined}
+    <div
       className={cn(
-        'group flex w-full items-start gap-3 rounded-[10px] border bg-surface px-4 py-3 text-left transition-[border-color,box-shadow,background-color] duration-150 ease-in-out',
+        'flex items-stretch rounded-[10px] border bg-surface transition-[border-color,box-shadow,background-color] duration-150 ease-in-out',
         selected
           ? 'border-ink/70 shadow-sm'
           : 'border-line hover:border-line-strong hover:bg-paper/40',
       )}
     >
-      <StatusIcon status={request.status} className="mt-0.5" />
-      <span className="sr-only">{statusLabel(request.status)}.</span>
-      <span className="min-w-0 flex-1">
-        <span className="flex items-baseline gap-2">
-          <span className="shrink-0 font-mono text-xs text-muted">#{request.reference}</span>
-          <span className="truncate text-[13.5px] font-medium text-ink">
-            {request.summary ?? 'Asked for a person before describing the problem'}
+      <button
+        type="button"
+        onClick={onOpen}
+        aria-current={selected ? 'true' : undefined}
+        className="flex min-w-0 flex-1 items-start gap-3 rounded-[10px] px-4 py-3 text-left"
+      >
+        <StatusIcon status={request.status} className="mt-0.5" />
+        <span className="sr-only">{statusLabel(request.status)}.</span>
+        <span className="min-w-0 flex-1">
+          <span className="flex items-baseline gap-2">
+            <span className="shrink-0 font-mono text-xs text-muted">#{request.reference}</span>
+            <span className="truncate text-[13.5px] font-medium text-ink">
+              {request.summary ?? 'Asked for a person before describing the problem'}
+            </span>
           </span>
-        </span>
-        <span className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted">
-          {facts.map((fact) => (
-            <span key={fact}>{fact}</span>
-          ))}
-        </span>
-        {request.flags.length > 0 && (
-          <span className="mt-2 flex flex-wrap gap-1.5">
-            {request.flags.map((flag) => (
-              <span
-                key={flag}
-                className="rounded-full border border-line px-2 py-px text-[11px] font-medium text-ink-soft"
-              >
-                {FLAG_LABELS[flag] ?? flag}
-              </span>
+          <span className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted">
+            {facts.map((fact) => (
+              <span key={fact}>{fact}</span>
             ))}
           </span>
-        )}
-      </span>
-      <span className="flex shrink-0 flex-col items-end gap-1 text-xs">
-        {request.amountMinor !== null && request.currency && (
-          <span className="font-medium text-ink tabular-nums">
-            {formatMoney(request.amountMinor, request.currency)}
-          </span>
-        )}
-        <span className="text-muted" title={new Date(request.createdAt).toLocaleString('en-GB')}>
-          {formatAge(request.createdAt)}
+          {request.flags.length > 0 && (
+            <span className="mt-2 flex flex-wrap gap-1.5">
+              {request.flags.map((flag) => (
+                <span
+                  key={flag}
+                  className="rounded-full border border-line px-2 py-px text-[11px] font-medium text-ink-soft"
+                >
+                  {FLAG_LABELS[flag] ?? flag}
+                </span>
+              ))}
+            </span>
+          )}
         </span>
-      </span>
-    </button>
+        <span className="flex shrink-0 flex-col items-end gap-1 text-xs">
+          {request.amountMinor !== null && request.currency && (
+            <span className="font-medium text-ink tabular-nums">
+              {formatMoney(request.amountMinor, request.currency)}
+            </span>
+          )}
+          <span className="text-muted" title={new Date(request.createdAt).toLocaleString('en-GB')}>
+            {formatAge(request.createdAt)}
+          </span>
+        </span>
+      </button>
+      {onApprove && (
+        <div className="flex items-center pr-3">
+          <button
+            type="button"
+            onClick={onApprove}
+            aria-label={`Approve refund for request ${request.reference}`}
+            className="rounded-button border border-line bg-surface px-2.5 py-1.5 text-xs font-medium text-ink hover:border-approved hover:bg-approved-tint hover:text-approved"
+          >
+            Approve
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
